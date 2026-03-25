@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Portal Familiar | Edu Registry Monolith{% endblock %}
+{% block heading %}Portal de Padres y Tutores{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Hijos vinculados</h2>
+      <span class="muted">{{ children|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>NIE</th><th>Nombre</th><th>Matrículas</th></tr></thead>
+      <tbody>
+        {% for child in children %}
+        <tr>
+          <td>{{ child.nie }}</td>
+          <td>{{ child.full_name }}</td>
+          <td>{{ child.student_enrollments|length }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No hay hijos vinculados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Próximas reuniones</h2>
+      <span class="muted">{{ meetings|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>Título</th><th>Fecha</th><th>Escuela</th></tr></thead>
+      <tbody>
+        {% for meeting in meetings %}
+        <tr>
+          <td><a href="/announcements/{{ meeting.id }}">{{ meeting.title }}</a></td>
+          <td>{{ meeting.event_date.strftime("%Y-%m-%d %H:%M") if meeting.event_date else "-" }}</td>
+          <td>{{ meeting.school_code or "Global" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No hay reuniones próximas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Notas recientes</h2>
+      <span class="muted">{{ grade_records|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>NIE</th><th>Materia</th><th>Evaluación</th><th>Nota</th></tr></thead>
+      <tbody>
+        {% for record in grade_records %}
+        <tr>
+          <td>{{ record.student_nie }}</td>
+          <td>{{ record.subject_name }}</td>
+          <td>{{ record.evaluation_name or record.evaluation_type or "-" }}</td>
+          <td>{{ record.score or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay notas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Boletas disponibles</h2>
+      <span class="muted">{{ report_cards|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>NIE</th><th>Año</th><th>Promedio</th><th>Documento</th></tr></thead>
+      <tbody>
+        {% for card in report_cards %}
+        <tr>
+          <td>{{ card.student_nie }}</td>
+          <td>{{ card.academic_year }}</td>
+          <td>{{ card.overall_average or "-" }}</td>
+          <td><a href="/report-cards/{{ card.id }}">Ver</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay boletas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Anuncios para familias</h2>
+    <span class="muted">{{ announcements|length }} registro(s)</span>
+  </div>
+  <table class="table">
+    <thead><tr><th>Título</th><th>Escuela</th><th>Publicado</th></tr></thead>
+    <tbody>
+      {% for announcement in announcements %}
+      <tr>
+        <td><a href="/announcements/{{ announcement.id }}">{{ announcement.title }}</a></td>
+        <td>{{ announcement.school_code or "Global" }}</td>
+        <td>{{ announcement.publication_date.strftime("%Y-%m-%d") if announcement.publication_date else "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">No hay anuncios visibles.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

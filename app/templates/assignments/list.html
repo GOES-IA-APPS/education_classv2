@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Asignaciones | Edu Registry Monolith{% endblock %}
+{% block heading %}Asignaciones Docentes{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/assignments" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_name" value="{{ filters.section_name or '' }}"></label>
+    <label>ID persona<input type="text" name="id_persona" value="{{ filters.id_persona or '' }}"></label>
+    <label>Componente<input type="text" name="component_type" value="{{ filters.component_type or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ pagination.total }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>Escuela</th>
+          <th>Docente</th>
+          <th>Componente</th>
+          <th>Grado</th>
+          <th>Sección</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in assignments %}
+        <tr>
+          <td><a href="/assignments/{{ assignment.id }}">{{ assignment.academic_year }}</a></td>
+          <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
+          <td><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.teacher.full_name or assignment.id_persona }}</a></td>
+          <td>{{ assignment.component_type or "-" }}</td>
+          <td>{{ assignment.grade_label or "-" }}</td>
+          <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No hay asignaciones visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar asignación</h2>
+    <form action="/assignments" method="post" class="form-grid">
+      <label>ID persona<input type="text" name="id_persona" required></label>
+      <label>Escuela<input type="text" name="school_code" required></label>
+      <label>Año académico<input type="number" name="academic_year" required></label>
+      <label>Componente<input type="text" name="component_type"></label>
+      <label>Grado<input type="text" name="grade_label"></label>
+      <label>Sección ID<input type="text" name="section_id"></label>
+      <label>Sección nombre<input type="text" name="section_name"></label>
+      <label>Turno<input type="text" name="shift"></label>
+      <label>Código adscrito<input type="text" name="cod_adscrito"></label>
+      <button type="submit" class="button">Guardar asignación</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

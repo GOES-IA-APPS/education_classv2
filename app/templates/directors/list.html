@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Directores | Edu Registry Monolith{% endblock %}
+{% block heading %}Directores Derivados{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtro de directores</h2>
+  </div>
+  <form method="get" action="/directors" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Asignaciones con <code>component_type = DIRECTOR</code></h2>
+    <span class="muted">{{ pagination.total }} registro(s)</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Escuela</th>
+        <th>Año</th>
+        <th>Docente</th>
+        <th>Grado</th>
+        <th>Sección</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in director_assignments %}
+      <tr>
+        <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
+        <td>{{ assignment.academic_year }}</td>
+        <td><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.teacher.full_name or assignment.id_persona }}</a></td>
+        <td>{{ assignment.grade_label or "-" }}</td>
+        <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No hay directores visibles bajo el alcance actual.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "partials/pagination.html" %}
+</section>
+{% endblock %}

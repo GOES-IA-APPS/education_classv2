@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ announcement.title }} | Edu Registry Monolith{% endblock %}
+{% block heading %}{{ announcement.title }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>Contenido</h2>
+    <p>{{ announcement.content }}</p>
+  </article>
+
+  <article class="card">
+    <h2>Metadatos</h2>
+    <div class="detail-grid">
+      <div><strong>Escuela</strong><span>{{ announcement.school_code or "Global" }}</span></div>
+      <div><strong>Visible para</strong><span>{{ announcement.visible_to }}</span></div>
+      <div><strong>Estado</strong><span>{{ announcement.status }}</span></div>
+      <div><strong>Publicación</strong><span>{{ announcement.publication_date.strftime("%Y-%m-%d %H:%M") if announcement.publication_date else "-" }}</span></div>
+      <div><strong>Evento</strong><span>{{ announcement.event_date.strftime("%Y-%m-%d %H:%M") if announcement.event_date else "-" }}</span></div>
+    </div>
+  </article>
+</section>
+{% endblock %}

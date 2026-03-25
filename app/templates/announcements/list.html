@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Anuncios | Edu Registry Monolith{% endblock %}
+{% block heading %}Anuncios e Informativos{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/announcements" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Estado<input type="text" name="status" value="{{ filters.status or '' }}"></label>
+    <label>Visible para<input type="text" name="visible_to" value="{{ filters.visible_to or '' }}"></label>
+    <label class="inline"><input type="checkbox" name="upcoming_only" {% if filters.upcoming_only %}checked{% endif %}>Solo reuniones próximas</label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ announcements|length }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Escuela</th>
+          <th>Visible para</th>
+          <th>Publicado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for announcement in announcements %}
+        <tr>
+          <td><a href="/announcements/{{ announcement.id }}">{{ announcement.title }}</a></td>
+          <td>{{ announcement.school_code or "Global" }}</td>
+          <td>{{ announcement.visible_to }}</td>
+          <td>{{ announcement.publication_date.strftime("%Y-%m-%d") if announcement.publication_date else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay anuncios visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Publicar anuncio</h2>
+    <form action="/announcements" method="post" class="form-grid">
+      <label>Escuela<input type="text" name="school_code"></label>
+      <label>Visible para
+        <select name="visible_to">
+          <option value="all">Todos</option>
+          <option value="staff">Personal</option>
+          <option value="teacher">Docentes</option>
+          <option value="student">Estudiantes</option>
+          <option value="student_tutor">Tutores</option>
+        </select>
+      </label>
+      <label>Título<input type="text" name="title" required></label>
+      <label>Contenido<textarea name="content" required></textarea></label>
+      <label>Fecha de publicación<input type="datetime-local" name="publication_date"></label>
+      <label>Fecha de evento/reunión<input type="datetime-local" name="event_date"></label>
+      <label>Estado
+        <select name="status">
+          <option value="published">Publicado</option>
+          <option value="draft">Borrador</option>
+          <option value="archived">Archivado</option>
+        </select>
+      </label>
+      <button type="submit" class="button">Guardar anuncio</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Escuela {{ school.code }} | Edu Registry Monolith{% endblock %}
+{% block heading %}Escuela {{ school.code }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>{{ school.name }}</h2>
+    <div class="detail-grid">
+      <div><strong>Sector</strong><span>{{ school.sector or "-" }}</span></div>
+      <div><strong>Zona</strong><span>{{ school.zone or "-" }}</span></div>
+      <div><strong>Departamento</strong><span>{{ school.department_code or "-" }}</span></div>
+      <div><strong>Municipio</strong><span>{{ school.municipality_code or "-" }}</span></div>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>Navegación</h2>
+    <div class="stack">
+      <a class="button nav-action" href="/teachers?school_code={{ school.code }}">Ver docentes</a>
+      <a class="button nav-action" href="/assignments?school_code={{ school.code }}">Ver asignaciones</a>
+      <a class="button nav-action" href="/enrollments?school_code={{ school.code }}">Ver matrículas</a>
+    </div>
+  </article>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Asignaciones recientes</h2>
+      <span class="muted">{{ assignments|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>Docente</th>
+          <th>Componente</th>
+          <th>Grado</th>
+          <th>Sección</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in assignments %}
+        <tr>
+          <td>{{ assignment.academic_year }}</td>
+          <td><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.id_persona }}</a></td>
+          <td>{{ assignment.component_type or "-" }}</td>
+          <td>{{ assignment.grade_label or "-" }}</td>
+          <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay asignaciones visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Matrículas recientes</h2>
+      <span class="muted">{{ enrollments|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>NIE</th>
+          <th>Grado</th>
+          <th>Sección</th>
+          <th>Modalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+        <tr>
+          <td>{{ enrollment.academic_year }}</td>
+          <td><a href="/students/{{ enrollment.nie }}">{{ enrollment.nie }}</a></td>
+          <td>{{ enrollment.grade_label or "-" }}</td>
+          <td>{{ enrollment.section_code or "-" }}</td>
+          <td>{{ enrollment.modality or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay matrículas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

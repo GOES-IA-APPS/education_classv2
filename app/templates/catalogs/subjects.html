@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Catálogo de Materias | Edu Registry Monolith{% endblock %}
+{% block heading %}Materias Configurables{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/catalogs/subjects" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Búsqueda<input type="text" name="q" value="{{ filters.q or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ subjects|length }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Escuela</th>
+          <th>Año</th>
+          <th>Grado</th>
+          <th>Código</th>
+          <th>Materia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for subject in subjects %}
+        <tr>
+          <td>{{ subject.school_code or "-" }}</td>
+          <td>{{ subject.academic_year or "-" }}</td>
+          <td>{{ subject.grade_label or "-" }}</td>
+          <td>{{ subject.subject_code }}</td>
+          <td>{{ subject.subject_name }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay materias visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar materia</h2>
+    <form action="/catalogs/subjects" method="post" class="form-grid">
+      <label>Escuela<input type="text" name="school_code"></label>
+      <label>Año académico<input type="number" name="academic_year"></label>
+      <label>Grado<input type="text" name="grade_label"></label>
+      <label>Código<input type="text" name="subject_code" required></label>
+      <label>Nombre<input type="text" name="subject_name" required></label>
+      <label>Orden<input type="number" name="display_order" value="0"></label>
+      <button type="submit" class="button">Guardar materia</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

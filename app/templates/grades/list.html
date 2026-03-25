@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Notas | Edu Registry Monolith{% endblock %}
+{% block heading %}Notas Académicas{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/grades" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <label>NIE<input type="text" name="student_nie" value="{{ filters.student_nie or '' }}"></label>
+    <label>Docente<input type="text" name="teacher_id_persona" value="{{ filters.teacher_id_persona or '' }}"></label>
+    <label>Materia<input type="text" name="subject_name" value="{{ filters.subject_name or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ grade_records|length }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>NIE</th>
+          <th>Materia</th>
+          <th>Evaluación</th>
+          <th>Peso</th>
+          <th>Nota</th>
+          <th>Docente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in grade_records %}
+        <tr>
+          <td><a href="/grades/{{ record.id }}">{{ record.student_nie }}</a></td>
+          <td><a href="/grades/{{ record.id }}">{{ record.subject_name }}</a></td>
+          <td>{{ record.evaluation_name or record.evaluation_type or "-" }}</td>
+          <td>{{ record.weight or "-" }}</td>
+          <td>{{ record.score or "-" }}</td>
+          <td>{{ record.teacher_id_persona or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No hay notas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+  <article class="card">
+    <h2>Registrar nota</h2>
+    <form action="/grades" method="post" class="form-grid">
+      <label>Escuela<input type="text" name="school_code" required></label>
+      <label>NIE<input type="text" name="student_nie" required></label>
+      <label>Año académico<input type="number" name="academic_year" required></label>
+      <label>Grado<input type="text" name="grade_label"></label>
+      <label>Sección código<input type="text" name="section_code"></label>
+      <label>Sección ID<input type="text" name="section_id"></label>
+      <label>ID persona docente<input type="text" name="teacher_id_persona"></label>
+      <label>ID asignación docente<input type="number" name="teacher_assignment_id"></label>
+      <label>ID materia<input type="number" name="subject_catalog_id"></label>
+      <label>Código materia<input type="text" name="subject_code"></label>
+      <label>Nombre materia<input type="text" name="subject_name" required></label>
+      <label>Tipo de evaluación<input type="text" name="evaluation_type" placeholder="Parcial, proyecto, trimestre..."></label>
+      <label>Nombre de evaluación<input type="text" name="evaluation_name"></label>
+      <label>Peso<input type="number" step="0.01" name="weight"></label>
+      <label>Nota<input type="number" step="0.01" name="score"></label>
+      <label>Observaciones<textarea name="observations"></textarea></label>
+      <button type="submit" class="button">Guardar nota</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

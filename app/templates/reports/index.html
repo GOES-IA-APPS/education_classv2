@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Reportes | Edu Registry Monolith{% endblock %}
+{% block heading %}Reportes Académicos{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <div class="alert info">Los bloques agregados del reporte se limitan a 100 o 200 filas según el caso para evitar pantallas inmanejables y mantener tiempos de respuesta sanos.</div>
+  <form method="get" action="/reports" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <button type="submit" class="button">Generar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <h2>Docentes por escuela</h2>
+    <table class="table">
+      <thead><tr><th>Escuela</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for row in reports.teachers_by_school %}
+        <tr><td>{{ row.school_code }}</td><td>{{ row.total }}</td></tr>
+        {% else %}
+        <tr><td colspan="2">Sin datos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <h2>Alumnos por escuela</h2>
+    <table class="table">
+      <thead><tr><th>Escuela</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for row in reports.students_by_school %}
+        <tr><td>{{ row.school_code }}</td><td>{{ row.total }}</td></tr>
+        {% else %}
+        <tr><td colspan="2">Sin datos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <h2>Matrículas por grado</h2>
+    <table class="table">
+      <thead><tr><th>Escuela</th><th>Año</th><th>Grado</th><th>Sección</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for row in reports.enrollments_by_grade %}
+        <tr>
+          <td>{{ row.school_code }}</td>
+          <td>{{ row.academic_year }}</td>
+          <td>{{ row.grade_label or "-" }}</td>
+          <td>{{ row.section_code or "-" }}</td>
+          <td>{{ row.total }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">Sin datos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <h2>Boletas por año</h2>
+    <table class="table">
+      <thead><tr><th>Escuela</th><th>Año</th><th>Total</th><th>Promedio general</th></tr></thead>
+      <tbody>
+        {% for row in reports.report_cards_by_year %}
+        <tr>
+          <td>{{ row.school_code }}</td>
+          <td>{{ row.academic_year }}</td>
+          <td>{{ row.total }}</td>
+          <td>{{ row.average_overall }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">Sin datos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Consolidado de notas</h2>
+  <table class="table">
+    <thead><tr><th>Escuela</th><th>Año</th><th>Grado</th><th>Sección</th><th>Materia</th><th>Promedio</th><th>Registros</th></tr></thead>
+    <tbody>
+      {% for row in reports.grades_consolidated %}
+      <tr>
+        <td>{{ row.school_code }}</td>
+        <td>{{ row.academic_year }}</td>
+        <td>{{ row.grade_label or "-" }}</td>
+        <td>{{ row.section_code or "-" }}</td>
+        <td>{{ row.subject_name }}</td>
+        <td>{{ row.average_score }}</td>
+        <td>{{ row.total_records }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">Sin datos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

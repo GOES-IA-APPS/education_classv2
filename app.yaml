@@ -1,0 +1,62 @@
+runtime: custom
+env: flex
+
+# Mantener este archivo sin secretos reales.
+# Recomendado: inyectar valores sensibles desde CI/CD o Secret Manager.
+# Opcional: definir una cuenta de servicio por version.
+# service_account: edu-registry-monolith@YOUR_PROJECT_ID.iam.gserviceaccount.com
+
+entrypoint: gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b :$PORT --timeout 120 main:app
+
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 2
+  cool_down_period_sec: 90
+  cpu_utilization:
+    target_utilization: 0.65
+
+resources:
+  cpu: 1
+  memory_gb: 1.0
+  disk_size_gb: 20
+
+beta_settings:
+  cloud_sql_instances: "YOUR_PROJECT_ID:YOUR_REGION:YOUR_CLOUD_SQL_INSTANCE"
+
+env_variables:
+  APP_ENV: "production"
+  APP_HOST: "0.0.0.0"
+  APP_PORT: "8080"
+  SECRET_KEY: "SET_IN_DEPLOY_PIPELINE"
+  ADMIN_EMAIL: "admin@example.org"
+  ADMIN_PASSWORD: "SET_IN_DEPLOY_PIPELINE"
+  ADMIN_FULL_NAME: "Administrador General"
+  DB_DRIVER: "mysql+pymysql"
+  DB_NAME: "edu_reg"
+  DB_USER: "edu_user"
+  DB_PASSWORD: "SET_IN_DEPLOY_PIPELINE"
+  DB_SOCKET_DIR: "/cloudsql"
+  DB_INSTANCE_CONNECTION_NAME: "YOUR_PROJECT_ID:YOUR_REGION:YOUR_CLOUD_SQL_INSTANCE"
+  SMTP_HOST: "smtp.example.com"
+  SMTP_PORT: "587"
+  SMTP_USER: "noreply@example.com"
+  SMTP_PASSWORD: "SET_IN_DEPLOY_PIPELINE"
+  SMTP_FROM: "noreply@example.com"
+  CREATE_SCHEMA_ON_STARTUP: "0"
+  SQL_ECHO: "0"
+  GOOGLE_CLOUD_PROJECT: "YOUR_PROJECT_ID"
+
+liveness_check:
+  path: "/healthz"
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 4
+  success_threshold: 2
+
+readiness_check:
+  path: "/readyz"
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: 900

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Catálogo de Modalidades | Edu Registry Monolith{% endblock %}
+{% block heading %}Modalidades y Submodalidades{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/catalogs/modalities" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Vista derivada desde matrículas</h2>
+      <span class="muted">{{ derived_modalities|length }} registro(s)</span>
+    </div>
+    <p class="muted">La vista derivada se limita a 200 filas para mantener navegación fluida. Aplica escuela y año para profundizar.</p>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Escuela</th>
+          <th>Año</th>
+          <th>Modalidad</th>
+          <th>Submodalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in derived_modalities %}
+        <tr>
+          <td>{{ row.school_code or "-" }}</td>
+          <td>{{ row.academic_year or "-" }}</td>
+          <td>{{ row.modality }}</td>
+          <td>{{ row.submodality or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay modalidades derivadas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Catálogo manual complementario</h2>
+      <span class="muted">{{ manual_modalities|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Escuela</th>
+          <th>Año</th>
+          <th>Modalidad</th>
+          <th>Submodalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for modality in manual_modalities %}
+        <tr>
+          <td>{{ modality.school_code or "-" }}</td>
+          <td>{{ modality.academic_year or "-" }}</td>
+          <td>{{ modality.modality }}</td>
+          <td>{{ modality.submodality or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay modalidades manuales.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+    <form action="/catalogs/modalities" method="post" class="form-grid">
+      <label>Escuela<input type="text" name="school_code"></label>
+      <label>Año académico<input type="number" name="academic_year"></label>
+      <label>Modalidad<input type="text" name="modality" required></label>
+      <label>Submodalidad<input type="text" name="submodality"></label>
+      <button type="submit" class="button">Guardar modalidad</button>
+    </form>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

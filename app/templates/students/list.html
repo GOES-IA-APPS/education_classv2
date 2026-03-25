@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Alumnos | Edu Registry Monolith{% endblock %}
+{% block heading %}Alumnos{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/students" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <label>NIE<input type="text" name="nie" value="{{ filters.nie or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ pagination.total }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>NIE</th>
+          <th>Nombre</th>
+          <th>Edad</th>
+          <th>Matrículas</th>
+          <th>Tutores</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td><a href="/students/{{ student.nie }}">{{ student.nie }}</a></td>
+          <td><a href="/students/{{ student.nie }}">{{ student.full_name or '-' }}</a></td>
+          <td>{{ student.age_current or "-" }}</td>
+          <td>{{ student.student_enrollments|length }}</td>
+          <td>{{ student.student_tutor_links|length }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay alumnos visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar alumno</h2>
+    <form action="/students" method="post" class="form-grid">
+      <label>NIE<input type="text" name="nie" required></label>
+      <label>Género<input type="text" name="gender"></label>
+      <label>Primer nombre<input type="text" name="first_name1"></label>
+      <label>Segundo nombre<input type="text" name="first_name2"></label>
+      <label>Tercer nombre<input type="text" name="first_name3"></label>
+      <label>Primer apellido<input type="text" name="last_name1"></label>
+      <label>Segundo apellido<input type="text" name="last_name2"></label>
+      <label>Tercer apellido<input type="text" name="last_name3"></label>
+      <label>Fecha de nacimiento<input type="date" name="birth_date"></label>
+      <label>Edad actual<input type="number" name="age_current"></label>
+      <label>Nombre del padre<input type="text" name="father_full_name"></label>
+      <label>Nombre de la madre<input type="text" name="mother_full_name"></label>
+      <label>Dirección<textarea name="address_full"></textarea></label>
+      <button type="submit" class="button">Guardar alumno</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

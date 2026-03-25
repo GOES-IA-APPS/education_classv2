@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Alumno {{ student.nie }} | Edu Registry Monolith{% endblock %}
+{% block heading %}Alumno {{ student.nie }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>{{ student.full_name or "Alumno" }}</h2>
+    <div class="detail-grid">
+      <div><strong>NIE</strong><span>{{ student.nie }}</span></div>
+      <div><strong>Género</strong><span>{{ student.gender or "-" }}</span></div>
+      <div><strong>Edad actual</strong><span>{{ student.age_current or "-" }}</span></div>
+      <div><strong>Fecha de nacimiento</strong><span>{{ student.birth_date or "-" }}</span></div>
+      <div><strong>Padre</strong><span>{{ student.father_full_name or "-" }}</span></div>
+      <div><strong>Madre</strong><span>{{ student.mother_full_name or "-" }}</span></div>
+    </div>
+    <p class="muted">{{ student.address_full or "Sin dirección registrada." }}</p>
+  </article>
+
+  <article class="card">
+    <h2>Acceso y vínculo</h2>
+    <p class="muted">La identidad académica real del alumno se mantiene en <code>students.nie</code>. Los módulos de usuarios y tutores se vinculan a esa clave natural sin modificar destructivamente la tabla heredada.</p>
+  </article>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Matrículas visibles</h2>
+      <span class="muted">{{ student.student_enrollments|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>Escuela</th>
+          <th>Grado</th>
+          <th>Sección</th>
+          <th>Modalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in student.student_enrollments %}
+        <tr>
+          <td><a href="/enrollments/{{ enrollment.id }}">{{ enrollment.academic_year }}</a></td>
+          <td><a href="/schools/{{ enrollment.school_code }}">{{ enrollment.school_code }}</a></td>
+          <td>{{ enrollment.grade_label or "-" }}</td>
+          <td>{{ enrollment.section_code or "-" }}</td>
+          <td>{{ enrollment.modality or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay matrículas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Tutores vinculados</h2>
+      <span class="muted">{{ student.student_tutor_links|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tutor</th>
+          <th>Relación</th>
+          <th>Principal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in student.student_tutor_links %}
+        <tr>
+          <td><a href="/tutors/{{ link.student_tutor.id }}">{{ link.student_tutor.full_name }}</a></td>
+          <td>{{ link.relationship_label or "-" }}</td>
+          <td>{{ "Sí" if link.is_primary else "No" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No hay tutores vinculados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

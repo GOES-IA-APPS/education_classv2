@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Boletas | Edu Registry Monolith{% endblock %}
+{% block heading %}Boletas de Notas{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/report-cards" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <label>NIE<input type="text" name="student_nie" value="{{ filters.student_nie or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ report_cards|length }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Escuela</th>
+          <th>NIE</th>
+          <th>Año</th>
+          <th>Grado</th>
+          <th>Promedio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for card in report_cards %}
+        <tr>
+          <td>{{ card.school_code }}</td>
+          <td><a href="/report-cards/{{ card.id }}">{{ card.student_nie }}</a></td>
+          <td>{{ card.academic_year }}</td>
+          <td>{{ card.grade_label or "-" }}</td>
+          <td>{{ card.overall_average or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No hay boletas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Emitir boleta</h2>
+    <form action="/report-cards" method="post" class="form-grid">
+      <label>Escuela<input type="text" name="school_code" required></label>
+      <label>NIE<input type="text" name="student_nie" required></label>
+      <label>ID matrícula<input type="number" name="enrollment_id"></label>
+      <label>Año académico<input type="number" name="academic_year" required></label>
+      <label>Grado<input type="text" name="grade_label"></label>
+      <label>Sección<input type="text" name="section_code"></label>
+      <label>Docente responsable<input type="text" name="responsible_teacher_id_persona"></label>
+      <label>Director responsable<input type="text" name="responsible_director_id_persona"></label>
+      <label>Observaciones<textarea name="observations"></textarea></label>
+      <button type="submit" class="button">Generar boleta</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% if pagination %}
+<div class="pagination">
+  <p class="pagination-summary">
+    Mostrando {{ pagination.start_item }}-{{ pagination.end_item }} de {{ pagination.total }} registro(s).
+    Página {{ pagination.page }} de {{ pagination.total_pages }}.
+  </p>
+  {% if pagination.total_pages > 1 %}
+  <div class="pagination-links">
+    {% if pagination.has_prev %}
+    <a class="button secondary" href="{{ request.url.include_query_params(page=1) }}">Primera</a>
+    <a class="button secondary" href="{{ request.url.include_query_params(page=pagination.page - 1) }}">Anterior</a>
+    {% endif %}
+    <span class="pagination-current">Página {{ pagination.page }}</span>
+    {% if pagination.has_next %}
+    <a class="button secondary" href="{{ request.url.include_query_params(page=pagination.page + 1) }}">Siguiente</a>
+    <a class="button secondary" href="{{ request.url.include_query_params(page=pagination.total_pages) }}">Última</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}

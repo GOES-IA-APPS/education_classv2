@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Escuelas | Edu Registry Monolith{% endblock %}
+{% block heading %}Escuelas{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Escuelas visibles</h2>
+      <span class="muted">{{ pagination.total }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Sector</th>
+          <th>Zona</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for school in schools %}
+        <tr>
+          <td><a href="/schools/{{ school.code }}">{{ school.code }}</a></td>
+          <td><a href="/schools/{{ school.code }}">{{ school.name }}</a></td>
+          <td>{{ school.sector or "-" }}</td>
+          <td>{{ school.zone or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay escuelas visibles para este usuario.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+  </article>
+
+  {% if current_user.role_code == "admin" %}
+  <article class="card">
+    <h2>Registrar o actualizar escuela</h2>
+    <form action="/schools" method="post" class="form-grid">
+      <label>Código<input type="text" name="code" required></label>
+      <label>Nombre<input type="text" name="name" required></label>
+      <label>Sector<input type="text" name="sector"></label>
+      <label>Zona<input type="text" name="zone"></label>
+      <label>Departamento<input type="number" name="department_code"></label>
+      <label>Municipio<input type="number" name="municipality_code"></label>
+      <button type="submit" class="button">Guardar escuela</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

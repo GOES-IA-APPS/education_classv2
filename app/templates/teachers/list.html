@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Docentes | Edu Registry Monolith{% endblock %}
+{% block heading %}Docentes{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/teachers" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>ID persona
+      <input type="text" name="id_persona" value="{{ filters.id_persona or '' }}">
+    </label>
+    <label>Género
+      <input type="text" name="gender" value="{{ filters.gender or '' }}">
+    </label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ pagination.total }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID persona</th>
+          <th>Nombre</th>
+          <th>Especialidad</th>
+          <th>Asignaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for teacher in teachers %}
+        <tr>
+          <td><a href="/teachers/{{ teacher.id_persona }}">{{ teacher.id_persona }}</a></td>
+          <td><a href="/teachers/{{ teacher.id_persona }}">{{ teacher.full_name or '-' }}</a></td>
+          <td>{{ teacher.specialty or "-" }}</td>
+          <td>{{ teacher.assignments|length }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay docentes visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar docente</h2>
+    <form action="/teachers" method="post" class="form-grid">
+      <label>ID persona<input type="text" name="id_persona" required></label>
+      <label>NIP<input type="text" name="nip"></label>
+      <label>DUI<input type="text" name="dui"></label>
+      <label>Nombres<input type="text" name="first_names"></label>
+      <label>Apellidos<input type="text" name="last_names"></label>
+      <label>Género<input type="text" name="gender"></label>
+      <label>Especialidad<input type="text" name="specialty"></label>
+      <button type="submit" class="button">Guardar docente</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

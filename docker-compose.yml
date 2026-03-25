@@ -1,0 +1,92 @@
+name: edu-registry-monolith
+
+services:
+  edu-registry-monolith-db:
+    image: mysql:8.0
+    container_name: edu-registry-monolith-db
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-edu_reg}
+      MYSQL_USER: ${DB_USER:-edu_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change-me}
+    ports:
+      - "${MYSQL_PORT_FORWARD:-3307}:3306"
+    volumes:
+      - edu-registry-monolith-mysql-data:/var/lib/mysql
+    networks:
+      - edu-registry-monolith-net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  edu-registry-monolith-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: edu-registry-monolith-app:local
+    container_name: edu-registry-monolith-app
+    restart: unless-stopped
+    init: true
+    depends_on:
+      edu-registry-monolith-db:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-Edu Registry Monolith}
+      APP_ENV: ${APP_ENV:-development}
+      DB_HOST: ${DB_HOST:-edu-registry-monolith-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-edu_reg}
+      DB_USER: ${DB_USER:-edu_user}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_DRIVER: ${DB_DRIVER:-mysql+pymysql}
+      DATABASE_URL: ${DATABASE_URL:-}
+      DB_INSTANCE_CONNECTION_NAME: ${DB_INSTANCE_CONNECTION_NAME:-}
+      DB_SOCKET_DIR: ${DB_SOCKET_DIR:-/cloudsql}
+      APP_HOST: ${APP_HOST:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-8000}
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.org}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin!234}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Administrador General}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      CREATE_SCHEMA_ON_STARTUP: ${CREATE_SCHEMA_ON_STARTUP:-1}
+      SQL_ECHO: ${SQL_ECHO:-0}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      IMPORT_SOURCE_DIR: ${IMPORT_SOURCE_DIR:-}
+      IMPORT_ZIP_FILE: ${IMPORT_ZIP_FILE:-}
+    command: >
+      sh -c "gunicorn -k uvicorn.workers.UvicornWorker
+      -w $${GUNICORN_WORKERS:-2}
+      -b $${APP_HOST:-0.0.0.0}:$${APP_PORT:-8000}
+      --timeout $${GUNICORN_TIMEOUT:-120}
+      main:app"
+    ports:
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
+    networks:
+      - edu-registry-monolith-net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/healthz' % os.environ.get('APP_PORT', '8000'), timeout=3)\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  edu-registry-monolith-mysql-data:
+    name: edu-registry-monolith-mysql-data
+
+networks:
+  edu-registry-monolith-net:
+    name: edu-registry-monolith-net

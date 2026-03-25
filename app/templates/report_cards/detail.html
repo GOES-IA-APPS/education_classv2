@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Boleta {{ report_card.id }} | Edu Registry Monolith{% endblock %}
+{% block heading %}Boleta {{ report_card.id }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>Resumen</h2>
+    <div class="detail-grid">
+      <div><strong>Escuela</strong><span>{{ report_card.school.name if report_card.school else report_card.school_code }}</span></div>
+      <div><strong>Alumno</strong><span>{{ report_card.student.full_name if report_card.student else report_card.student_nie }}</span></div>
+      <div><strong>NIE</strong><span>{{ report_card.student_nie }}</span></div>
+      <div><strong>Año</strong><span>{{ report_card.academic_year }}</span></div>
+      <div><strong>Grado</strong><span>{{ report_card.grade_label or "-" }}</span></div>
+      <div><strong>Sección</strong><span>{{ report_card.section_code or "-" }}</span></div>
+      <div><strong>Promedio</strong><span>{{ report_card.overall_average or "-" }}</span></div>
+      <div><strong>Emitida</strong><span>{{ report_card.issued_at.strftime("%Y-%m-%d") if report_card.issued_at else "-" }}</span></div>
+    </div>
+    <p class="muted">{{ report_card.observations or "Sin observaciones." }}</p>
+  </article>
+
+  <article class="card">
+    <h2>Documento</h2>
+    <div class="stack">
+      <a class="button" href="/report-cards/{{ report_card.id }}/print">Ver boleta HTML</a>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Detalle por materia</h2>
+    <span class="muted">{{ report_card.items|length }} materia(s)</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Materia</th>
+        <th>Evaluaciones</th>
+        <th>Nota final</th>
+        <th>Observaciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in report_card.items %}
+      <tr>
+        <td>{{ item.subject_name }}</td>
+        <td>{{ item.evaluation_count }}</td>
+        <td>{{ item.final_score or "-" }}</td>
+        <td>{{ item.observations or "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">No hay materias registradas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Edu Registry Monolith{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a href="/dashboard" class="brand">
+        <span class="brand-seal">SGE</span>
+        <span class="brand-copy">
+          <span class="brand-kicker">Sistema institucional</span>
+          <strong>Sistema de Gestión Escolar</strong>
+          <small>Monolito SSR compatible con el esquema heredado</small>
+        </span>
+      </a>
+
+      {% if current_user %}
+      <div class="profile-card">
+        <p class="muted">Sesión activa</p>
+        <h2>{{ current_user.full_name }}</h2>
+        <p>{{ role_label(current_user.role_code) }}</p>
+        <small>{{ current_user.email }}</small>
+        {% if current_user.school_code %}
+        <small>Escuela: {{ current_user.school_code }}</small>
+        {% endif %}
+      </div>
+
+      <nav class="nav">
+        <span class="nav-label">General</span>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/schools">Escuelas</a>
+
+        {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+        <span class="nav-label">Académico</span>
+        <a href="/teachers">Docentes</a>
+        <a href="/assignments">Asignaciones</a>
+        <a href="/grades">Notas</a>
+        <a href="/report-cards">Boletas</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "teacher", "student", "student_tutor", "administrative"] %}
+        <a href="/students">Alumnos</a>
+        <a href="/enrollments">Matrículas</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+        <a href="/directors">Directores</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+        <span class="nav-label">Catálogos</span>
+        <a href="/catalogs/grades">Grados</a>
+        <a href="/catalogs/sections">Secciones</a>
+        <a href="/catalogs/modalities">Modalidades</a>
+        <a href="/catalogs/subjects">Materias</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "student_tutor", "administrative"] %}
+        <span class="nav-label">Familias</span>
+        <a href="/tutors">Tutores</a>
+        {% if current_user.role_code == "student_tutor" %}
+        <a href="/parent-portal">Portal familiar</a>
+        {% endif %}
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "teacher", "student", "student_tutor", "administrative"] %}
+        <span class="nav-label">Comunicación</span>
+        <a href="/announcements">Anuncios</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+        <span class="nav-label">Reportes</span>
+        <a href="/reports">Reportes</a>
+        {% endif %}
+
+        {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+        <span class="nav-label">Sistema</span>
+        <a href="/users">Usuarios</a>
+        {% endif %}
+      </nav>
+
+      <form action="/logout" method="post" class="logout-form">
+        <button type="submit" class="button ghost">Cerrar sesión</button>
+      </form>
+      {% endif %}
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div class="topbar-copy">
+          <p class="topbar-kicker">Operación escolar con compatibilidad primero</p>
+          <h1>{% block heading %}Panel{% endblock %}</h1>
+        </div>
+        <div class="topbar-meta">
+          {% if current_user %}
+          <span class="scope-chip">{{ role_label(current_user.role_code) }}</span>
+          <span class="scope-chip">{{ current_user.school_code or "Cobertura nacional" }}</span>
+          {% endif %}
+          {% if current_user and current_user.role_code == "student_tutor" %}
+          <a class="button" href="/parent-portal">Ir al portal familiar</a>
+          {% endif %}
+        </div>
+      </header>
+      {% if current_user %}
+      <section class="page-note">
+        <p>Las vistas extensas usan paginado de 15 registros y cache de 1 hora por usuario y filtros para reducir carga repetitiva sobre la base. Usa filtros para ubicar más rápido la información.</p>
+      </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

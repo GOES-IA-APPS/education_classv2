@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Tutores | Edu Registry Monolith{% endblock %}
+{% block heading %}Tutores{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/tutors" class="filters-grid">
+    <label>NIE del alumno<input type="text" name="student_nie" value="{{ filters.student_nie or '' }}"></label>
+    <label>Búsqueda por nombre<input type="text" name="q" value="{{ filters.q or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ tutors|length }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tutor</th>
+          <th>Correo</th>
+          <th>Teléfono</th>
+          <th>Alumnos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tutor in tutors %}
+        <tr>
+          <td><a href="/tutors/{{ tutor.id }}">{{ tutor.full_name }}</a></td>
+          <td>{{ tutor.email or "-" }}</td>
+          <td>{{ tutor.phone or "-" }}</td>
+          <td>{{ tutor.student_links|length }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay tutores visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar tutor</h2>
+    <form action="/tutors" method="post" class="form-grid">
+      <label>Nombre completo<input type="text" name="full_name" required></label>
+      <label>Correo<input type="email" name="email"></label>
+      <label>Teléfono<input type="text" name="phone"></label>
+      <label>DUI<input type="text" name="dui"></label>
+      <label>Dirección<textarea name="address"></textarea></label>
+      <label>Notas<textarea name="notes"></textarea></label>
+      <label>NIE del alumno a vincular<input type="text" name="student_nie"></label>
+      <label>Relación<input type="text" name="relationship_label" placeholder="Padre, madre, tutor legal..."></label>
+      <label class="inline"><input type="checkbox" name="is_primary">Tutor principal</label>
+      <label>Correo del usuario tutor<input type="email" name="user_email"></label>
+      <label>Contraseña del usuario tutor<input type="password" name="user_password"></label>
+      <label>Nombre del usuario tutor<input type="text" name="user_full_name"></label>
+      <button type="submit" class="button">Guardar tutor</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

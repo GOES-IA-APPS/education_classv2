@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Tutor {{ tutor.full_name }} | Edu Registry Monolith{% endblock %}
+{% block heading %}Tutor {{ tutor.full_name }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>Datos del tutor</h2>
+    <div class="detail-grid">
+      <div><strong>Nombre</strong><span>{{ tutor.full_name }}</span></div>
+      <div><strong>Correo</strong><span>{{ tutor.email or "-" }}</span></div>
+      <div><strong>Teléfono</strong><span>{{ tutor.phone or "-" }}</span></div>
+      <div><strong>DUI</strong><span>{{ tutor.dui or "-" }}</span></div>
+      <div><strong>Activo</strong><span>{{ "Sí" if tutor.is_active else "No" }}</span></div>
+      <div><strong>Usuarios vinculados</strong><span>{{ tutor.user_links|length }}</span></div>
+    </div>
+    <p class="muted">{{ tutor.address or "Sin dirección registrada." }}</p>
+    {% if tutor.notes %}
+    <p class="muted">{{ tutor.notes }}</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h2>Extensión segura</h2>
+    <p class="muted">El módulo de tutores vive en tablas nuevas (<code>student_tutors</code> y <code>student_tutor_student_links</code>) y complementa los datos heredados de padres y madres sin tocar destructivamente <code>students</code>.</p>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Alumnos vinculados</h2>
+    <span class="muted">{{ tutor.student_links|length }} registro(s)</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>NIE</th>
+        <th>Alumno</th>
+        <th>Relación</th>
+        <th>Principal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for link in tutor.student_links %}
+      <tr>
+        <td><a href="/students/{{ link.student_nie }}">{{ link.student_nie }}</a></td>
+        <td><a href="/students/{{ link.student_nie }}">{{ link.student.full_name or link.student_nie }}</a></td>
+        <td>{{ link.relationship_label or "-" }}</td>
+        <td>{{ "Sí" if link.is_primary else "No" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">No hay alumnos vinculados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

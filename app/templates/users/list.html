@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Usuarios | Edu Registry Monolith{% endblock %}
+{% block heading %}Usuarios del Sistema{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Usuarios visibles</h2>
+      <span class="muted">{{ users|length }} registro(s)</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Escuela</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.email }}</td>
+          <td>{{ user.full_name }}</td>
+          <td>{{ role_label(user.role_code) }}</td>
+          <td>{{ user.school_code or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No hay usuarios visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <h2>Crear usuario</h2>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <form action="/users" method="post" class="form-grid">
+      <label>Correo<input type="email" name="email" required></label>
+      <label>Nombre completo<input type="text" name="full_name" required></label>
+      <label>Contraseña<input type="password" name="password" required></label>
+      <label>Rol
+        <select name="role_code" required>
+          {% for role_code in role_codes %}
+          <option value="{{ role_code }}">{{ role_label(role_code) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Escuela
+        <select name="school_code">
+          <option value="">Sin escuela</option>
+          {% for school in schools %}
+          <option value="{{ school.code }}">{{ school.code }} · {{ school.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>ID Persona docente<input type="text" name="teacher_id_persona"></label>
+      <label>NIE alumno<input type="text" name="student_nie"></label>
+      <button type="submit" class="button">Crear usuario</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

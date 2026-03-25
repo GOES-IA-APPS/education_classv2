@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Matrículas | Edu Registry Monolith{% endblock %}
+{% block heading %}Matrículas{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-heading">
+    <h2>Filtros</h2>
+  </div>
+  <form method="get" action="/enrollments" class="filters-grid">
+    <label>Escuela
+      <select name="school_code">
+        <option value="">Todas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <label>Modalidad<input type="text" name="modality" value="{{ filters.modality or '' }}"></label>
+    <label>Submodalidad<input type="text" name="submodality" value="{{ filters.submodality or '' }}"></label>
+    <label>NIE<input type="text" name="nie" value="{{ filters.nie or '' }}"></label>
+    <button type="submit" class="button">Filtrar</button>
+  </form>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Listado</h2>
+      <span class="muted">{{ pagination.total }} registro(s)</span>
+    </div>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>NIE</th>
+          <th>Escuela</th>
+          <th>Grado</th>
+          <th>Sección</th>
+          <th>Modalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+        <tr>
+          <td><a href="/enrollments/{{ enrollment.id }}">{{ enrollment.academic_year }}</a></td>
+          <td><a href="/students/{{ enrollment.nie }}">{{ enrollment.nie }}</a></td>
+          <td><a href="/schools/{{ enrollment.school_code }}">{{ enrollment.school_code }}</a></td>
+          <td>{{ enrollment.grade_label or "-" }}</td>
+          <td>{{ enrollment.section_code or "-" }}</td>
+          <td>{{ enrollment.modality or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No hay matrículas visibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "partials/pagination.html" %}
+  </article>
+
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="card">
+    <h2>Registrar matrícula</h2>
+    <form action="/enrollments" method="post" class="form-grid">
+      <label>NIE<input type="text" name="nie" required></label>
+      <label>Escuela<input type="text" name="school_code" required></label>
+      <label>Año académico<input type="number" name="academic_year" required></label>
+      <label>Sección<input type="text" name="section_code"></label>
+      <label>Grado<input type="text" name="grade_label"></label>
+      <label>Modalidad<input type="text" name="modality"></label>
+      <label>Submodalidad<input type="text" name="submodality"></label>
+      <button type="submit" class="button">Guardar matrícula</button>
+    </form>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Nota {{ grade_record.id }} | Edu Registry Monolith{% endblock %}
+{% block heading %}Nota {{ grade_record.id }}{% endblock %}
+{% block content %}
+<section class="grid two">
+  <article class="card">
+    <h2>Detalle de la nota</h2>
+    <div class="detail-grid">
+      <div><strong>Escuela</strong><span>{{ grade_record.school_code }}</span></div>
+      <div><strong>NIE</strong><span>{{ grade_record.student_nie }}</span></div>
+      <div><strong>Año</strong><span>{{ grade_record.academic_year }}</span></div>
+      <div><strong>Grado</strong><span>{{ grade_record.grade_label or "-" }}</span></div>
+      <div><strong>Sección</strong><span>{{ grade_record.section_code or grade_record.section_id or "-" }}</span></div>
+      <div><strong>Docente</strong><span>{{ grade_record.teacher_id_persona or "-" }}</span></div>
+      <div><strong>Materia</strong><span>{{ grade_record.subject_name }}</span></div>
+      <div><strong>Evaluación</strong><span>{{ grade_record.evaluation_name or grade_record.evaluation_type or "-" }}</span></div>
+      <div><strong>Peso</strong><span>{{ grade_record.weight or "-" }}</span></div>
+      <div><strong>Nota</strong><span>{{ grade_record.score or "-" }}</span></div>
+    </div>
+    <p class="muted">{{ grade_record.observations or "Sin observaciones." }}</p>
+  </article>
+
+  <article class="card">
+    <h2>Editar nota</h2>
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+    {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+    <form action="/grades/{{ grade_record.id }}" method="post" class="form-grid">
+      <label>ID materia<input type="number" name="subject_catalog_id" value="{{ grade_record.subject_catalog_id or '' }}"></label>
+      <label>Código materia<input type="text" name="subject_code" value="{{ grade_record.subject_code or '' }}"></label>
+      <label>Nombre materia<input type="text" name="subject_name" value="{{ grade_record.subject_name }}"></label>
+      <label>Tipo de evaluación<input type="text" name="evaluation_type" value="{{ grade_record.evaluation_type or '' }}"></label>
+      <label>Nombre de evaluación<input type="text" name="evaluation_name" value="{{ grade_record.evaluation_name or '' }}"></label>
+      <label>Peso<input type="number" step="0.01" name="weight" value="{{ grade_record.weight or '' }}"></label>
+      <label>Nota<input type="number" step="0.01" name="score" value="{{ grade_record.score or '' }}"></label>
+      <label>Observaciones<textarea name="observations">{{ grade_record.observations or '' }}</textarea></label>
+      <button type="submit" class="button">Actualizar nota</button>
+    </form>
+    {% else %}
+    <p class="muted">Este perfil tiene acceso de consulta.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
