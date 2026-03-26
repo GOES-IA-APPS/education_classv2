@@ -1,83 +1,154 @@
 {% extends "base.html" %}
-{% block title %}Asignaciones | Edu Registry Monolith{% endblock %}
-{% block heading %}Asignaciones Docentes{% endblock %}
+{% block title %}Asignaciones docentes | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Asignaciones docentes{% endblock %}
+{% block subheading %}Consulta distribución académica por escuela y ubica registros por docente, componente, grado o sección desde una búsqueda única.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Carga académica</p>
+    <h2>Asignaciones visibles</h2>
+    <p>El sistema conserva el detalle académico real de cada asignación y lo presenta con foco en consulta rápida para coordinación docente y gestión directiva.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar asignación</strong>
+        <small>Usa este panel cuando debas crear o ajustar una asignación sin saturar la vista de trabajo cotidiano.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/assignments" method="post" class="form-panel">
+        <div class="form-header">
+          <h3>Registro académico</h3>
+          <p>Relaciona al docente con su escuela y con el contexto académico real del esquema heredado.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>ID persona</span><input type="text" name="id_persona" required><small>Debe corresponder a un docente existente.</small></label>
+          <label><span>Escuela</span><input type="text" name="school_code" required><small>Usa el código institucional de la escuela.</small></label>
+          <label><span>Año académico</span><input type="number" name="academic_year" required></label>
+          <label><span>Componente</span><input type="text" name="component_type"><small>Ejemplo: DIRECTOR o área académica.</small></label>
+          <label><span>Grado</span><input type="text" name="grade_label"></label>
+          <label><span>Sección ID</span><input type="text" name="section_id"></label>
+          <label><span>Sección nombre</span><input type="text" name="section_name"></label>
+          <label><span>Turno</span><input type="text" name="shift"></label>
+          <label class="field-span-2"><span>Código adscrito</span><input type="text" name="cod_adscrito"><small>Código complementario para control académico o institucional.</small></label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar asignación</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado de asignaciones</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu perfil.</p>
+    </div>
   </div>
-  <form method="get" action="/assignments" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/assignments" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
-    <label>Sección<input type="text" name="section_name" value="{{ filters.section_name or '' }}"></label>
-    <label>ID persona<input type="text" name="id_persona" value="{{ filters.id_persona or '' }}"></label>
-    <label>Componente<input type="text" name="component_type" value="{{ filters.component_type or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Listado</h2>
-      <span class="muted">{{ pagination.total }} registro(s)</span>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Docente, componente, grado o sección">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/assignments" class="button secondary inline">Limpiar</a>
+      {% endif %}
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Asignaciones según tu cobertura</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if assignments %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>Año</th>
-          <th>Escuela</th>
+          <th>Registro</th>
           <th>Docente</th>
-          <th>Componente</th>
-          <th>Grado</th>
-          <th>Sección</th>
+          <th>Carga académica</th>
+          <th>Gestión</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for assignment in assignments %}
         <tr>
-          <td><a href="/assignments/{{ assignment.id }}">{{ assignment.academic_year }}</a></td>
-          <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
-          <td><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.teacher.full_name or assignment.id_persona }}</a></td>
-          <td>{{ assignment.component_type or "-" }}</td>
-          <td>{{ assignment.grade_label or "-" }}</td>
-          <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
+          <td data-label="Registro">
+            <div class="table-cell-stack">
+              <a href="/assignments/{{ assignment.id }}" class="table-primary-link">Año {{ assignment.academic_year }}</a>
+              <span class="table-meta">Escuela {{ assignment.school_code }}</span>
+            </div>
+          </td>
+          <td data-label="Docente">
+            <div class="table-cell-stack">
+              <a href="/teachers/{{ assignment.id_persona }}" class="table-primary-link">{{ assignment.teacher.full_name or assignment.id_persona }}</a>
+              <span class="table-meta">ID persona {{ assignment.id_persona }}</span>
+            </div>
+          </td>
+          <td data-label="Carga académica">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">{{ assignment.component_type or "Sin componente" }}</span>
+              <span class="table-pill subtle">{{ assignment.grade_label or "Sin grado" }}</span>
+              <span class="table-pill subtle">{{ assignment.section_name or assignment.section_id or "Sin sección" }}</span>
+            </div>
+          </td>
+          <td data-label="Gestión">
+            <div class="table-cell-stack">
+              <strong>{{ assignment.shift or "Turno no registrado" }}</strong>
+              <span class="table-meta">Código adscrito {{ assignment.cod_adscrito or "No disponible" }}</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/assignments/{{ assignment.id }}" class="table-action-link">Ver detalle</a>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="6">No hay asignaciones visibles.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    {% include "partials/pagination.html" %}
-  </article>
-
-  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-  <article class="card">
-    <h2>Registrar asignación</h2>
-    <form action="/assignments" method="post" class="form-grid">
-      <label>ID persona<input type="text" name="id_persona" required></label>
-      <label>Escuela<input type="text" name="school_code" required></label>
-      <label>Año académico<input type="number" name="academic_year" required></label>
-      <label>Componente<input type="text" name="component_type"></label>
-      <label>Grado<input type="text" name="grade_label"></label>
-      <label>Sección ID<input type="text" name="section_id"></label>
-      <label>Sección nombre<input type="text" name="section_name"></label>
-      <label>Turno<input type="text" name="shift"></label>
-      <label>Código adscrito<input type="text" name="cod_adscrito"></label>
-      <button type="submit" class="button">Guardar asignación</button>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos asignaciones con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Ajusta la escuela seleccionada o usa una búsqueda más amplia por docente, componente, grado o sección.</p>
+    {% else %}
+    <p>No hay asignaciones visibles para tu sesión en este momento. Verifica la cobertura académica cargada para tu rol.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

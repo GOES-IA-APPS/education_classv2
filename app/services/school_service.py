@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import School, StudentEnrollment, TeacherAssignment, User
@@ -44,11 +44,31 @@ def paginated_visible_schools(
     db: Session,
     current_user: User,
     *,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[School]:
     base_stmt = visible_schools_stmt(db, current_user)
+    if q:
+        query = f"%{q.strip().lower()}%"
+        base_stmt = base_stmt.where(
+            or_(
+                func.lower(func.coalesce(School.code, "")).like(query),
+                func.lower(func.coalesce(School.name, "")).like(query),
+                func.lower(func.coalesce(School.sector, "")).like(query),
+                func.lower(func.coalesce(School.zone, "")).like(query),
+            )
+        )
     fetch_stmt = visible_schools_stmt(db, current_user)
+    if q:
+        fetch_stmt = fetch_stmt.where(
+            or_(
+                func.lower(func.coalesce(School.code, "")).like(query),
+                func.lower(func.coalesce(School.name, "")).like(query),
+                func.lower(func.coalesce(School.sector, "")).like(query),
+                func.lower(func.coalesce(School.zone, "")).like(query),
+            )
+        )
     return paginate_entities(
         db,
         base_stmt=base_stmt,
@@ -64,6 +84,7 @@ def paginated_visible_schools(
             "school_code": current_user.school_code,
             "teacher_id_persona": current_user.teacher_id_persona,
             "student_nie": current_user.student_nie,
+            "q": q,
         },
     )
 

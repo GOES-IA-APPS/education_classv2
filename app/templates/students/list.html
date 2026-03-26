@@ -1,84 +1,171 @@
 {% extends "base.html" %}
-{% block title %}Alumnos | Edu Registry Monolith{% endblock %}
+{% block title %}Alumnos | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Alumnos{% endblock %}
+{% block subheading %}Ubica estudiantes por escuela o mediante una búsqueda general de NIE, nombre o referencia familiar sin saturar la pantalla de filtros.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Comunidad estudiantil</p>
+    <h2>Alumnos visibles</h2>
+    <p>Esta vista reúne la información principal de matrícula y seguimiento básico para consulta rápida por parte de docentes, directores y personal autorizado.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar alumno</strong>
+        <small>El formulario queda disponible cuando necesites agregar o corregir un registro sin recargar visualmente el listado principal.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/students" method="post" class="form-panel">
+        <div class="form-header">
+          <h3>Ficha básica del alumno</h3>
+          <p>Completa los datos esenciales de identificación, referencia familiar y ubicación del estudiante.</p>
+        </div>
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Identificación personal</strong>
+            <p>Usa el NIE como identificador principal dentro del sistema heredado.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>NIE</span><input type="text" name="nie" required><small>Identificador único del alumno.</small></label>
+            <label><span>Género</span><input type="text" name="gender"><small>Dato visible en ficha y reportes.</small></label>
+            <label><span>Primer nombre</span><input type="text" name="first_name1"></label>
+            <label><span>Segundo nombre</span><input type="text" name="first_name2"></label>
+            <label><span>Tercer nombre</span><input type="text" name="first_name3"></label>
+            <label><span>Primer apellido</span><input type="text" name="last_name1"></label>
+            <label><span>Segundo apellido</span><input type="text" name="last_name2"></label>
+            <label><span>Tercer apellido</span><input type="text" name="last_name3"></label>
+            <label><span>Fecha de nacimiento</span><input type="date" name="birth_date"></label>
+            <label><span>Edad actual</span><input type="number" name="age_current"><small>Útil para validación rápida en listados.</small></label>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Referencia familiar</strong>
+            <p>Esta información apoya la consulta administrativa y la futura vinculación con tutores.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>Nombre del padre</span><input type="text" name="father_full_name"></label>
+            <label><span>Nombre de la madre</span><input type="text" name="mother_full_name"></label>
+            <label class="field-span-2"><span>Dirección</span><textarea name="address_full"></textarea><small>Dirección registrada para seguimiento institucional.</small></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar alumno</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado estudiantil</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu sesión.</p>
+    </div>
   </div>
-  <form method="get" action="/students" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/students" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
-    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
-    <label>NIE<input type="text" name="nie" value="{{ filters.nie or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Listado</h2>
-      <span class="muted">{{ pagination.total }} registro(s)</span>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="NIE, nombre del alumno o referencia familiar">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/students" class="button secondary inline">Limpiar</a>
+      {% endif %}
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Cobertura estudiantil completa</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if students %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>NIE</th>
-          <th>Nombre</th>
-          <th>Edad</th>
-          <th>Matrículas</th>
-          <th>Tutores</th>
+          <th>Alumno</th>
+          <th>Referencia familiar</th>
+          <th>Seguimiento</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for student in students %}
         <tr>
-          <td><a href="/students/{{ student.nie }}">{{ student.nie }}</a></td>
-          <td><a href="/students/{{ student.nie }}">{{ student.full_name or '-' }}</a></td>
-          <td>{{ student.age_current or "-" }}</td>
-          <td>{{ student.student_enrollments|length }}</td>
-          <td>{{ student.student_tutor_links|length }}</td>
+          <td data-label="Alumno">
+            <div class="table-cell-stack">
+              <a href="/students/{{ student.nie }}" class="table-primary-link">{{ student.full_name or "Alumno sin nombre registrado" }}</a>
+              <span class="table-meta">NIE {{ student.nie }}</span>
+            </div>
+          </td>
+          <td data-label="Referencia familiar">
+            <div class="table-cell-stack">
+              <strong>{{ student.mother_full_name or student.father_full_name or "Sin referencia familiar" }}</strong>
+              <span class="table-meta">
+                {% if student.mother_full_name and student.father_full_name %}
+                Padre: {{ student.father_full_name }}
+                {% else %}
+                Información familiar disponible en ficha completa.
+                {% endif %}
+              </span>
+            </div>
+          </td>
+          <td data-label="Seguimiento">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">Edad {{ student.age_current or "No registrada" }}</span>
+              <span class="table-pill subtle">{{ student.student_enrollments|length }} matrícula(s)</span>
+              <span class="table-pill subtle">{{ student.student_tutor_links|length }} tutor(es)</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/students/{{ student.nie }}" class="table-action-link">Ver ficha</a>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="5">No hay alumnos visibles.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    {% include "partials/pagination.html" %}
-  </article>
-
-  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-  <article class="card">
-    <h2>Registrar alumno</h2>
-    <form action="/students" method="post" class="form-grid">
-      <label>NIE<input type="text" name="nie" required></label>
-      <label>Género<input type="text" name="gender"></label>
-      <label>Primer nombre<input type="text" name="first_name1"></label>
-      <label>Segundo nombre<input type="text" name="first_name2"></label>
-      <label>Tercer nombre<input type="text" name="first_name3"></label>
-      <label>Primer apellido<input type="text" name="last_name1"></label>
-      <label>Segundo apellido<input type="text" name="last_name2"></label>
-      <label>Tercer apellido<input type="text" name="last_name3"></label>
-      <label>Fecha de nacimiento<input type="date" name="birth_date"></label>
-      <label>Edad actual<input type="number" name="age_current"></label>
-      <label>Nombre del padre<input type="text" name="father_full_name"></label>
-      <label>Nombre de la madre<input type="text" name="mother_full_name"></label>
-      <label>Dirección<textarea name="address_full"></textarea></label>
-      <button type="submit" class="button">Guardar alumno</button>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos alumnos con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Prueba con otra escuela o con una búsqueda más amplia por NIE, nombre o referencia familiar.</p>
+    {% else %}
+    <p>No hay alumnos visibles para tu sesión en este momento. Revisa el alcance del rol o la carga institucional disponible.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

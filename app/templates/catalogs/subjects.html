@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Catálogo de Materias | Edu Registry Monolith{% endblock %}
+{% block title %}Catálogo de Materias | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Materias Configurables{% endblock %}
 {% block content %}
 <section class="card">
@@ -51,7 +51,7 @@
           <td>{{ subject.subject_name }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5">No hay materias visibles.</td></tr>
+        <tr><td colspan="5">No hay materias registradas para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -59,15 +59,22 @@
 
   {% if current_user.role_code in ["admin", "principal", "administrative"] %}
   <article class="card">
-    <h2>Registrar materia</h2>
-    <form action="/catalogs/subjects" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code"></label>
-      <label>Año académico<input type="number" name="academic_year"></label>
-      <label>Grado<input type="text" name="grade_label"></label>
-      <label>Código<input type="text" name="subject_code" required></label>
-      <label>Nombre<input type="text" name="subject_name" required></label>
-      <label>Orden<input type="number" name="display_order" value="0"></label>
-      <button type="submit" class="button">Guardar materia</button>
+    <div class="form-header">
+      <h2>Registrar materia</h2>
+      <p>Configura materias por escuela, año y grado para reutilizarlas en notas, boletas y reportes.</p>
+    </div>
+    <form action="/catalogs/subjects" method="post" class="form-panel">
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code"></label>
+        <label><span>Año académico</span><input type="number" name="academic_year"></label>
+        <label><span>Grado</span><input type="text" name="grade_label"></label>
+        <label><span>Código</span><input type="text" name="subject_code" required><small>Clave breve de referencia para la materia.</small></label>
+        <label><span>Nombre</span><input type="text" name="subject_name" required><small>Nombre visible en notas, boletas y documentos.</small></label>
+        <label><span>Orden</span><input type="number" name="display_order" value="0"><small>Controla el orden de aparición en pantallas académicas.</small></label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar materia</button>
+      </div>
     </form>
   </article>
   {% endif %}

@@ -1,55 +1,87 @@
 {% extends "base.html" %}
-{% block title %}Docente {{ teacher.id_persona }} | Edu Registry Monolith{% endblock %}
-{% block heading %}Docente {{ teacher.id_persona }}{% endblock %}
+{% block title %}Docente {{ teacher.id_persona }} | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Ficha docente{% endblock %}
+{% block subheading %}Consulta la identidad académica del docente y sus asignaciones visibles sin alterar la clave natural heredada del sistema.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Docente</p>
+    <h2>{{ teacher.full_name or "Docente sin nombre registrado" }}</h2>
+    <p>La referencia académica principal se mantiene en <code>teachers.id_persona</code>, preservando compatibilidad con el esquema heredado.</p>
+  </div>
+  <div class="inline-meta">
+    <span class="badge">{{ teacher.id_persona }}</span>
+    <span class="badge">{{ teacher.specialty or "Especialidad no indicada" }}</span>
+  </div>
+</section>
+
 <section class="grid two">
   <article class="card">
-    <h2>{{ teacher.full_name or "Docente" }}</h2>
+    <div class="section-heading">
+      <div>
+        <h2>Identificación</h2>
+        <p class="muted">Datos visibles del expediente docente.</p>
+      </div>
+    </div>
     <div class="detail-grid">
       <div><strong>ID persona</strong><span>{{ teacher.id_persona }}</span></div>
-      <div><strong>NIP</strong><span>{{ teacher.nip or "-" }}</span></div>
-      <div><strong>DUI</strong><span>{{ teacher.dui or "-" }}</span></div>
-      <div><strong>Género</strong><span>{{ teacher.gender or "-" }}</span></div>
-      <div><strong>Especialidad</strong><span>{{ teacher.specialty or "-" }}</span></div>
+      <div><strong>NIP</strong><span>{{ teacher.nip or "No registrado" }}</span></div>
+      <div><strong>DUI</strong><span>{{ teacher.dui or "No registrado" }}</span></div>
+      <div><strong>Género</strong><span>{{ teacher.gender or "No indicado" }}</span></div>
+      <div><strong>Especialidad</strong><span>{{ teacher.specialty or "No indicada" }}</span></div>
     </div>
   </article>
 
   <article class="card">
-    <h2>Vinculación segura</h2>
-    <p class="muted">La identidad académica real del docente se mantiene en <code>teachers.id_persona</code>. Los usuarios del sistema se vinculan por esa clave natural sin alterar la tabla heredada.</p>
+    <div class="section-heading">
+      <div>
+        <h2>Vinculación segura</h2>
+        <p class="muted">Relación entre identidad académica y acceso del sistema.</p>
+      </div>
+    </div>
+    <p>Los usuarios del monolito se vinculan con el docente a través de <code>id_persona</code>, sin modificar destructivamente la estructura heredada.</p>
   </article>
 </section>
 
 <section class="card">
   <div class="section-heading">
-    <h2>Asignaciones visibles</h2>
-    <span class="muted">{{ teacher.assignments|length }} registro(s)</span>
+    <div>
+      <h2>Asignaciones visibles</h2>
+      <p class="muted">{{ teacher.assignments|length }} registro(s) asociados a este docente.</p>
+    </div>
   </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Año</th>
-        <th>Escuela</th>
-        <th>Componente</th>
-        <th>Grado</th>
-        <th>Sección</th>
-        <th>Turno</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for assignment in teacher.assignments %}
-      <tr>
-        <td><a href="/assignments/{{ assignment.id }}">{{ assignment.academic_year }}</a></td>
-        <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
-        <td>{{ assignment.component_type or "-" }}</td>
-        <td>{{ assignment.grade_label or "-" }}</td>
-        <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
-        <td>{{ assignment.shift or "-" }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6">No hay asignaciones visibles para este docente.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% if teacher.assignments %}
+  <div class="table-shell">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>Escuela</th>
+          <th>Componente</th>
+          <th>Grado</th>
+          <th>Sección</th>
+          <th>Turno</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in teacher.assignments %}
+        <tr>
+          <td><a href="/assignments/{{ assignment.id }}">{{ assignment.academic_year }}</a></td>
+          <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
+          <td>{{ assignment.component_type or "Sin componente" }}</td>
+          <td>{{ assignment.grade_label or "Sin grado" }}</td>
+          <td>{{ assignment.section_name or assignment.section_id or "Sin sección" }}</td>
+          <td>{{ assignment.shift or "No indicado" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay asignaciones visibles</h3>
+    <p>Cuando este docente tenga asignaciones visibles dentro de tu alcance, aparecerán aquí con su detalle académico.</p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

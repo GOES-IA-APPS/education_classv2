@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recuperar usuario | Edu Registry Monolith</title>
+  <title>Recuperar usuario | Sistema de Gestión Escolar</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="auth-body">
@@ -14,8 +14,11 @@
       <p>En este sistema el identificador de acceso es el correo electrónico. El flujo genera un token seguro y, en este entorno, te mostramos el enlace resultante.</p>
     </div>
 
-    <form action="/access/forgot-username" method="post" class="card auth-card">
-      <h2>Solicitar recuperación</h2>
+    <form action="/access/forgot-username" method="post" class="card auth-card form-panel">
+      <div class="form-header">
+        <h2>Solicitar recuperación</h2>
+        <p>Ingresa tu correo para confirmar el identificador de acceso asociado a tu cuenta.</p>
+      </div>
       {% if error %}
       <div class="alert error">{{ error }}</div>
       {% endif %}
@@ -25,8 +28,14 @@
       <p><a class="text-link" href="{{ result.link }}">{{ result.link }}</a></p>
       {% endif %}
       {% endif %}
-      <label>Correo<input type="email" name="email" required></label>
-      <button type="submit" class="button">Generar enlace seguro</button>
+      <label>
+        <span>Correo</span>
+        <input type="email" name="email" required>
+        <small>Usa el correo registrado en tu perfil institucional.</small>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="button">Generar enlace seguro</button>
+      </div>
       <div class="auth-links">
         <a class="text-link" href="/login">Volver al login</a>
       </div>

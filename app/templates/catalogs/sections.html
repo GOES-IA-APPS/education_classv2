@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Catálogo de Secciones | Edu Registry Monolith{% endblock %}
+{% block title %}Catálogo de Secciones | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Secciones y Vista Académica{% endblock %}
 {% block content %}
 <section class="card">
@@ -90,14 +90,22 @@
     </table>
 
     {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-    <form action="/catalogs/sections" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code"></label>
-      <label>Año académico<input type="number" name="academic_year"></label>
-      <label>Grado<input type="text" name="grade_label"></label>
-      <label>Código de sección<input type="text" name="section_code"></label>
-      <label>Nombre de sección<input type="text" name="section_name"></label>
-      <label>Turno<input type="text" name="shift"></label>
-      <button type="submit" class="button">Guardar sección</button>
+    <form action="/catalogs/sections" method="post" class="form-panel">
+      <div class="form-header">
+        <h3>Registrar sección manual</h3>
+        <p>Complementa la vista derivada cuando necesites normalizar una sección con mayor claridad operativa.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code"></label>
+        <label><span>Año académico</span><input type="number" name="academic_year"></label>
+        <label><span>Grado</span><input type="text" name="grade_label"></label>
+        <label><span>Código de sección</span><input type="text" name="section_code"></label>
+        <label><span>Nombre de sección</span><input type="text" name="section_name"></label>
+        <label><span>Turno</span><input type="text" name="shift"></label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar sección</button>
+      </div>
     </form>
     {% endif %}
   </article>

@@ -1,54 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Escuelas | Edu Registry Monolith{% endblock %}
+{% block title %}Escuelas | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Escuelas{% endblock %}
+{% block subheading %}Consulta instituciones visibles, ubica rápidamente un centro escolar y navega hacia docentes, asignaciones o matrículas relacionadas.{% endblock %}
 {% block content %}
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Escuelas visibles</h2>
-      <span class="muted">{{ pagination.total }} registro(s)</span>
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Cobertura institucional</p>
+    <h2>Escuelas registradas</h2>
+    <p>Este listado presenta las escuelas disponibles para tu perfil dentro del sistema. Usa la búsqueda general para encontrar una institución por código, nombre o clasificación.</p>
+  </div>
+  {% if current_user.role_code == "admin" %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar o actualizar escuela</strong>
+        <small>Abre este panel solo cuando necesites intervenir el catálogo institucional.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/schools" method="post" class="form-panel">
+        <div class="form-header">
+          <h3>Datos de la institución</h3>
+          <p>Registra la escuela respetando su código oficial y su clasificación administrativa.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>Código</span><input type="text" name="code" required><small>Identificador institucional único.</small></label>
+          <label><span>Nombre</span><input type="text" name="name" required><small>Nombre oficial visible en todo el sistema.</small></label>
+          <label><span>Sector</span><input type="text" name="sector"><small>Ejemplo: público o privado.</small></label>
+          <label><span>Zona</span><input type="text" name="zone"><small>Ejemplo: urbana o rural.</small></label>
+          <label><span>Departamento</span><input type="number" name="department_code"><small>Código administrativo del departamento.</small></label>
+          <label><span>Municipio</span><input type="number" name="municipality_code"><small>Código administrativo del municipio.</small></label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar escuela</button>
+        </div>
+      </form>
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </details>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Listado institucional</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu sesión.</p>
+    </div>
+  </div>
+
+  <form method="get" action="/schools" class="toolbar-filters is-single-filter">
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Código, nombre, sector o zona">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Buscar</button>
+      {% if filters.q %}
+      <a href="/schools" class="button secondary inline">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.q %}
+    <span class="table-pill sand">Búsqueda activa: {{ filters.q }}</span>
+    {% else %}
+    <span class="table-pill subtle">Sin filtros activos</span>
     {% endif %}
-    <table class="table">
+    <span class="table-pill subtle">Catálogo institucional</span>
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if schools %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>Código</th>
-          <th>Nombre</th>
-          <th>Sector</th>
-          <th>Zona</th>
+          <th>Escuela</th>
+          <th>Clasificación</th>
+          <th>Ubicación administrativa</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for school in schools %}
         <tr>
-          <td><a href="/schools/{{ school.code }}">{{ school.code }}</a></td>
-          <td><a href="/schools/{{ school.code }}">{{ school.name }}</a></td>
-          <td>{{ school.sector or "-" }}</td>
-          <td>{{ school.zone or "-" }}</td>
+          <td data-label="Escuela">
+            <div class="table-cell-stack">
+              <a href="/schools/{{ school.code }}" class="table-primary-link">{{ school.name }}</a>
+              <span class="table-meta">Código {{ school.code }}</span>
+            </div>
+          </td>
+          <td data-label="Clasificación">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">{{ school.sector or "Sector no definido" }}</span>
+              <span class="table-pill subtle">{{ school.zone or "Zona no registrada" }}</span>
+            </div>
+          </td>
+          <td data-label="Ubicación administrativa">
+            <div class="table-cell-stack">
+              <strong>{{ school.department_code or "Sin departamento" }}</strong>
+              <span class="table-meta">Municipio {{ school.municipality_code or "No registrado" }}</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/schools/{{ school.code }}" class="table-action-link">Abrir ficha</a>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="4">No hay escuelas visibles para este usuario.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    {% include "partials/pagination.html" %}
-  </article>
-
-  {% if current_user.role_code == "admin" %}
-  <article class="card">
-    <h2>Registrar o actualizar escuela</h2>
-    <form action="/schools" method="post" class="form-grid">
-      <label>Código<input type="text" name="code" required></label>
-      <label>Nombre<input type="text" name="name" required></label>
-      <label>Sector<input type="text" name="sector"></label>
-      <label>Zona<input type="text" name="zone"></label>
-      <label>Departamento<input type="number" name="department_code"></label>
-      <label>Municipio<input type="number" name="municipality_code"></label>
-      <button type="submit" class="button">Guardar escuela</button>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos escuelas con ese criterio</h3>
+    {% if filters.q %}
+    <p>Intenta con otro código, nombre o clasificación institucional para ubicar la escuela que buscas.</p>
+    {% else %}
+    <p>Tu sesión no tiene escuelas visibles por el momento. Verifica el alcance asignado a tu perfil.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

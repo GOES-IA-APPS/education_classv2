@@ -1,78 +1,151 @@
 {% extends "base.html" %}
-{% block title %}Docentes | Edu Registry Monolith{% endblock %}
+{% block title %}Docentes | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Docentes{% endblock %}
+{% block subheading %}Filtra por escuela y busca por nombre, identificación o especialidad para ubicar rápidamente al personal docente visible.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Gestión docente</p>
+    <h2>Personal docente</h2>
+    <p>Consulta la nómina visible dentro de tu alcance y navega al detalle de cada docente con sus asignaciones académicas relacionadas.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar docente</strong>
+        <small>Mantén este panel cerrado para priorizar la consulta diaria y abrirlo solo cuando debas agregar o corregir información.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/teachers" method="post" class="form-panel">
+        <div class="form-header">
+          <h3>Ficha básica del docente</h3>
+          <p>Registra la identidad del docente y su información operativa principal para futuras asignaciones.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>ID persona</span><input type="text" name="id_persona" required><small>Clave natural principal del docente.</small></label>
+          <label><span>NIP</span><input type="text" name="nip"><small>Número de personal si está disponible.</small></label>
+          <label><span>DUI</span><input type="text" name="dui"><small>Documento nacional del docente.</small></label>
+          <label><span>Género</span><input type="text" name="gender"><small>Dato visible en ficha y reportes.</small></label>
+          <label><span>Nombres</span><input type="text" name="first_names"><small>Incluye todos los nombres registrados.</small></label>
+          <label><span>Apellidos</span><input type="text" name="last_names"><small>Incluye todos los apellidos registrados.</small></label>
+          <label class="field-span-2"><span>Especialidad</span><input type="text" name="specialty"><small>Área principal de desempeño o especialidad académica.</small></label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar docente</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado docente</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu perfil.</p>
+    </div>
   </div>
-  <form method="get" action="/teachers" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/teachers" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>ID persona
-      <input type="text" name="id_persona" value="{{ filters.id_persona or '' }}">
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Nombre, ID persona, NIP, DUI o especialidad">
     </label>
-    <label>Género
-      <input type="text" name="gender" value="{{ filters.gender or '' }}">
-    </label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Listado</h2>
-      <span class="muted">{{ pagination.total }} registro(s)</span>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/teachers" class="button secondary inline">Limpiar</a>
+      {% endif %}
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Cobertura según tu rol</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if teachers %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>ID persona</th>
-          <th>Nombre</th>
+          <th>Docente</th>
+          <th>Identificación</th>
           <th>Especialidad</th>
-          <th>Asignaciones</th>
+          <th>Gestión visible</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for teacher in teachers %}
         <tr>
-          <td><a href="/teachers/{{ teacher.id_persona }}">{{ teacher.id_persona }}</a></td>
-          <td><a href="/teachers/{{ teacher.id_persona }}">{{ teacher.full_name or '-' }}</a></td>
-          <td>{{ teacher.specialty or "-" }}</td>
-          <td>{{ teacher.assignments|length }}</td>
+          <td data-label="Docente">
+            <div class="table-cell-stack">
+              <a href="/teachers/{{ teacher.id_persona }}" class="table-primary-link">{{ teacher.full_name or "Docente sin nombre registrado" }}</a>
+              <span class="table-meta">ID persona {{ teacher.id_persona }}</span>
+            </div>
+          </td>
+          <td data-label="Identificación">
+            <div class="table-cell-stack">
+              <strong>{{ teacher.nip or "NIP no registrado" }}</strong>
+              <span class="table-meta">{{ teacher.dui or "DUI no registrado" }}</span>
+            </div>
+          </td>
+          <td data-label="Especialidad">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">{{ teacher.specialty or "Sin especialidad indicada" }}</span>
+              <span class="table-pill subtle">{{ teacher.gender or "Género no indicado" }}</span>
+            </div>
+          </td>
+          <td data-label="Gestión visible">
+            <div class="table-cell-stack">
+              <strong>{{ teacher.assignments|length }} asignación(es)</strong>
+              <span class="table-meta">Consulta disponible dentro de tu alcance actual.</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/teachers/{{ teacher.id_persona }}" class="table-action-link">Ver ficha</a>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="4">No hay docentes visibles.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    {% include "partials/pagination.html" %}
-  </article>
-
-  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-  <article class="card">
-    <h2>Registrar docente</h2>
-    <form action="/teachers" method="post" class="form-grid">
-      <label>ID persona<input type="text" name="id_persona" required></label>
-      <label>NIP<input type="text" name="nip"></label>
-      <label>DUI<input type="text" name="dui"></label>
-      <label>Nombres<input type="text" name="first_names"></label>
-      <label>Apellidos<input type="text" name="last_names"></label>
-      <label>Género<input type="text" name="gender"></label>
-      <label>Especialidad<input type="text" name="specialty"></label>
-      <button type="submit" class="button">Guardar docente</button>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos docentes con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Ajusta la escuela seleccionada o usa una búsqueda más amplia para localizar personal docente dentro de tu cobertura.</p>
+    {% else %}
+    <p>Tu sesión no tiene docentes visibles por ahora. Revisa si el alcance institucional cargado para tu rol es el esperado.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

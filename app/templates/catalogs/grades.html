@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Catálogo de Grados | Edu Registry Monolith{% endblock %}
+{% block title %}Catálogo de Grados | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Grados y Vista Académica{% endblock %}
 {% block content %}
 <section class="card">
@@ -81,12 +81,20 @@
     </table>
 
     {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-    <form action="/catalogs/grades" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code"></label>
-      <label>Año académico<input type="number" name="academic_year"></label>
-      <label>Grado<input type="text" name="grade_label" required></label>
-      <label>Nombre de despliegue<input type="text" name="display_name"></label>
-      <button type="submit" class="button">Guardar grado</button>
+    <form action="/catalogs/grades" method="post" class="form-panel">
+      <div class="form-header">
+        <h3>Registrar grado manual</h3>
+        <p>Usa este formulario cuando necesites complementar la vista derivada con un grado controlado manualmente.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code"><small>Déjalo vacío si el grado aplica de forma general.</small></label>
+        <label><span>Año académico</span><input type="number" name="academic_year"></label>
+        <label><span>Grado</span><input type="text" name="grade_label" required></label>
+        <label><span>Nombre de despliegue</span><input type="text" name="display_name"><small>Nombre más legible para pantallas y documentos.</small></label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar grado</button>
+      </div>
     </form>
     {% endif %}
   </article>

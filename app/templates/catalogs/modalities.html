@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Catálogo de Modalidades | Edu Registry Monolith{% endblock %}
+{% block title %}Catálogo de Modalidades | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Modalidades y Submodalidades{% endblock %}
 {% block content %}
 <section class="card">
@@ -83,12 +83,20 @@
     </table>
 
     {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-    <form action="/catalogs/modalities" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code"></label>
-      <label>Año académico<input type="number" name="academic_year"></label>
-      <label>Modalidad<input type="text" name="modality" required></label>
-      <label>Submodalidad<input type="text" name="submodality"></label>
-      <button type="submit" class="button">Guardar modalidad</button>
+    <form action="/catalogs/modalities" method="post" class="form-panel">
+      <div class="form-header">
+        <h3>Registrar modalidad manual</h3>
+        <p>Utiliza esta extensión cuando necesites complementar la clasificación derivada desde matrículas.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code"></label>
+        <label><span>Año académico</span><input type="number" name="academic_year"></label>
+        <label><span>Modalidad</span><input type="text" name="modality" required></label>
+        <label><span>Submodalidad</span><input type="text" name="submodality"></label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar modalidad</button>
+      </div>
     </form>
     {% endif %}
   </article>

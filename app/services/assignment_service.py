@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.models import TeacherAssignment, User
+from app.models import Teacher, TeacherAssignment, User
 from app.repositories.assignments import (
     ASSIGNMENT_LIST_OPTIONS,
     get_assignment_by_id,
@@ -16,6 +17,24 @@ from app.utils.cache import invalidate_namespace
 from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
 
 
+def _assignment_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(TeacherAssignment.id_persona, "")).like(query),
+        func.lower(func.coalesce(TeacherAssignment.component_type, "")).like(query),
+        func.lower(func.coalesce(TeacherAssignment.grade_label, "")).like(query),
+        func.lower(func.coalesce(TeacherAssignment.section_id, "")).like(query),
+        func.lower(func.coalesce(TeacherAssignment.section_name, "")).like(query),
+        TeacherAssignment.teacher.has(
+            or_(
+                func.lower(func.coalesce(Teacher.first_names, "")).like(query),
+                func.lower(func.coalesce(Teacher.last_names, "")).like(query),
+                func.lower(func.coalesce(Teacher.specialty, "")).like(query),
+            )
+        ),
+    )
+
+
 def search_assignments(
     db: Session,
     current_user: User,
@@ -26,6 +45,7 @@ def search_assignments(
     section_name: str | None = None,
     id_persona: str | None = None,
     component_type: str | None = None,
+    q: str | None = None,
 ) -> list[TeacherAssignment]:
     stmt = visible_assignments_stmt(db, current_user).options(*ASSIGNMENT_LIST_OPTIONS)
     if school_code:
@@ -43,6 +63,8 @@ def search_assignments(
         stmt = stmt.where(TeacherAssignment.id_persona == id_persona)
     if component_type:
         stmt = stmt.where(TeacherAssignment.component_type == component_type)
+    if q:
+        stmt = stmt.where(_assignment_search_clause(q))
     return list_assignments(db, stmt)
 
 
@@ -56,6 +78,7 @@ def search_assignments_page(
     section_name: str | None = None,
     id_persona: str | None = None,
     component_type: str | None = None,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[TeacherAssignment]:
@@ -75,6 +98,8 @@ def search_assignments_page(
         base_stmt = base_stmt.where(TeacherAssignment.id_persona == id_persona)
     if component_type:
         base_stmt = base_stmt.where(TeacherAssignment.component_type == component_type)
+    if q:
+        base_stmt = base_stmt.where(_assignment_search_clause(q))
     fetch_stmt = base_stmt.options(*ASSIGNMENT_LIST_OPTIONS)
     return paginate_entities(
         db,
@@ -105,6 +130,7 @@ def search_assignments_page(
                 "section_name": section_name,
                 "id_persona": id_persona,
                 "component_type": component_type,
+                "q": q,
             },
         },
     )
@@ -124,12 +150,15 @@ def list_director_assignments(
     *,
     school_code: str | None = None,
     academic_year: int | None = None,
+    q: str | None = None,
 ) -> list[TeacherAssignment]:
     stmt = visible_director_assignments_stmt(db, current_user).options(*ASSIGNMENT_LIST_OPTIONS)
     if school_code:
         stmt = stmt.where(TeacherAssignment.school_code == school_code)
     if academic_year:
         stmt = stmt.where(TeacherAssignment.academic_year == academic_year)
+    if q:
+        stmt = stmt.where(_assignment_search_clause(q))
     return list_assignments(db, stmt)
 
 
@@ -139,6 +168,7 @@ def list_director_assignments_page(
     *,
     school_code: str | None = None,
     academic_year: int | None = None,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[TeacherAssignment]:
@@ -147,6 +177,8 @@ def list_director_assignments_page(
         base_stmt = base_stmt.where(TeacherAssignment.school_code == school_code)
     if academic_year:
         base_stmt = base_stmt.where(TeacherAssignment.academic_year == academic_year)
+    if q:
+        base_stmt = base_stmt.where(_assignment_search_clause(q))
     fetch_stmt = base_stmt.options(*ASSIGNMENT_LIST_OPTIONS)
     return paginate_entities(
         db,
@@ -170,6 +202,7 @@ def list_director_assignments_page(
             "filters": {
                 "school_code": school_code,
                 "academic_year": academic_year,
+                "q": q,
             },
         },
     )

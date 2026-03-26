@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models import Student, StudentEnrollment, User
@@ -15,6 +16,21 @@ from app.utils.cache import invalidate_namespace
 from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
 
 
+def _student_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(Student.nie, "")).like(query),
+        func.lower(func.coalesce(Student.first_name1, "")).like(query),
+        func.lower(func.coalesce(Student.first_name2, "")).like(query),
+        func.lower(func.coalesce(Student.first_name3, "")).like(query),
+        func.lower(func.coalesce(Student.last_name1, "")).like(query),
+        func.lower(func.coalesce(Student.last_name2, "")).like(query),
+        func.lower(func.coalesce(Student.last_name3, "")).like(query),
+        func.lower(func.coalesce(Student.father_full_name, "")).like(query),
+        func.lower(func.coalesce(Student.mother_full_name, "")).like(query),
+    )
+
+
 def search_students(
     db: Session,
     current_user: User,
@@ -24,6 +40,7 @@ def search_students(
     grade_label: str | None = None,
     section_code: str | None = None,
     nie: str | None = None,
+    q: str | None = None,
 ) -> list[Student]:
     stmt = visible_students_stmt(db, current_user).options(*STUDENT_LIST_OPTIONS)
     if school_code:
@@ -36,6 +53,8 @@ def search_students(
         stmt = stmt.where(Student.student_enrollments.any(StudentEnrollment.section_code == section_code))
     if nie:
         stmt = stmt.where(Student.nie == nie)
+    if q:
+        stmt = stmt.where(_student_search_clause(q))
     return list_students(db, stmt)
 
 
@@ -48,6 +67,7 @@ def search_students_page(
     grade_label: str | None = None,
     section_code: str | None = None,
     nie: str | None = None,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[Student]:
@@ -62,6 +82,8 @@ def search_students_page(
         base_stmt = base_stmt.where(Student.student_enrollments.any(StudentEnrollment.section_code == section_code))
     if nie:
         base_stmt = base_stmt.where(Student.nie == nie)
+    if q:
+        base_stmt = base_stmt.where(_student_search_clause(q))
     fetch_stmt = base_stmt.options(*STUDENT_LIST_OPTIONS)
     return paginate_entities(
         db,
@@ -84,6 +106,7 @@ def search_students_page(
                 "grade_label": grade_label,
                 "section_code": section_code,
                 "nie": nie,
+                "q": q,
             },
         },
     )

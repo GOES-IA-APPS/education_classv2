@@ -1,8 +1,8 @@
 {% if pagination %}
 <div class="pagination">
   <p class="pagination-summary">
-    Mostrando {{ pagination.start_item }}-{{ pagination.end_item }} de {{ pagination.total }} registro(s).
-    Página {{ pagination.page }} de {{ pagination.total_pages }}.
+    Mostrando {{ pagination.start_item }} a {{ pagination.end_item }} de {{ pagination.total }} registro(s).
+    Página {{ pagination.page }} de {{ pagination.total_pages }} con bloques de {{ pagination.per_page }} resultados.
   </p>
   {% if pagination.total_pages > 1 %}
   <div class="pagination-links">

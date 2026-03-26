@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Reportes | Edu Registry Monolith{% endblock %}
+{% block title %}Reportes | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Reportes Académicos{% endblock %}
+{% block subheading %}Consulta reportes consolidados por escuela, año, grado y sección con una presentación más clara y consistente para trabajo institucional.{% endblock %}
 {% block content %}
 <section class="card">
   <div class="section-heading">
@@ -8,7 +9,7 @@
   </div>
   <div class="alert info">Los bloques agregados del reporte se limitan a 100 o 200 filas según el caso para evitar pantallas inmanejables y mantener tiempos de respuesta sanos.</div>
   <form method="get" action="/reports" class="filters-grid">
-    <label>Escuela
+    <label><span>Escuela</span>
       <select name="school_code">
         <option value="">Todas</option>
         {% for school in schools %}
@@ -16,9 +17,9 @@
         {% endfor %}
       </select>
     </label>
-    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
-    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
+    <label><span>Año</span><input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
+    <label><span>Grado</span><input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
+    <label><span>Sección</span><input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
     <button type="submit" class="button">Generar</button>
   </form>
 </section>
@@ -32,7 +33,7 @@
         {% for row in reports.teachers_by_school %}
         <tr><td>{{ row.school_code }}</td><td>{{ row.total }}</td></tr>
         {% else %}
-        <tr><td colspan="2">Sin datos.</td></tr>
+        <tr><td colspan="2">No hay datos disponibles en el alcance actual.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -46,7 +47,7 @@
         {% for row in reports.students_by_school %}
         <tr><td>{{ row.school_code }}</td><td>{{ row.total }}</td></tr>
         {% else %}
-        <tr><td colspan="2">Sin datos.</td></tr>
+        <tr><td colspan="2">No hay datos disponibles en el alcance actual.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -68,7 +69,7 @@
           <td>{{ row.total }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5">Sin datos.</td></tr>
+        <tr><td colspan="5">No hay registros para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -87,7 +88,7 @@
           <td>{{ row.average_overall }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4">Sin datos.</td></tr>
+        <tr><td colspan="4">No hay boletas consolidadas para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -110,8 +111,8 @@
         <td>{{ row.total_records }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="7">Sin datos.</td></tr>
-      {% endfor %}
+      <tr><td colspan="7">No hay notas consolidadas para los filtros seleccionados.</td></tr>
+    {% endfor %}
     </tbody>
   </table>
 </section>

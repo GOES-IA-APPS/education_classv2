@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Portal Familiar | Edu Registry Monolith{% endblock %}
+{% block title %}Portal Familiar | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Portal de Padres y Tutores{% endblock %}
 {% block content %}
 <section class="grid two">
@@ -39,7 +39,7 @@
           <td>{{ meeting.school_code or "Global" }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="3">No hay reuniones próximas visibles.</td></tr>
+        <tr><td colspan="3">No hay reuniones próximas programadas para tu perfil.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -63,7 +63,7 @@
           <td>{{ record.score or "-" }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4">No hay notas visibles.</td></tr>
+        <tr><td colspan="4">No hay notas visibles para los alumnos vinculados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -85,7 +85,7 @@
           <td><a href="/report-cards/{{ card.id }}">Ver</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="4">No hay boletas visibles.</td></tr>
+        <tr><td colspan="4">No hay boletas disponibles para consulta en este momento.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -107,7 +107,7 @@
         <td>{{ announcement.publication_date.strftime("%Y-%m-%d") if announcement.publication_date else "-" }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="3">No hay anuncios visibles.</td></tr>
+      <tr><td colspan="3">No hay anuncios disponibles para familias en este momento.</td></tr>
       {% endfor %}
     </tbody>
   </table>

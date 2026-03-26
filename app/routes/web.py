@@ -209,13 +209,16 @@ def dashboard(
 @router.get("/schools", response_class=HTMLResponse)
 def schools_page(
     request: Request,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    filters = {"q": clean_optional(q)}
     pagination = paginated_visible_schools(
         db,
         current_user,
+        q=filters["q"],
         page=sanitize_page(page),
         per_page=DEFAULT_PER_PAGE,
     )
@@ -225,6 +228,7 @@ def schools_page(
         {
             "schools": pagination.items,
             "pagination": pagination,
+            "filters": filters,
             "error": None,
         },
         current_user=current_user,
@@ -257,6 +261,7 @@ def create_school_action(
         pagination = paginated_visible_schools(
             db,
             current_user,
+            q=None,
             page=1,
             per_page=DEFAULT_PER_PAGE,
         )
@@ -266,6 +271,7 @@ def create_school_action(
             {
                 "schools": pagination.items,
                 "pagination": pagination,
+                "filters": {"q": None},
                 "error": str(exc),
             },
             current_user=current_user,
@@ -358,16 +364,14 @@ def create_user_action(
 def teachers_page(
     request: Request,
     school_code: Optional[str] = None,
-    id_persona: Optional[str] = None,
-    gender: Optional[str] = None,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(require_roles(*TEACHER_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "id_persona": clean_optional(id_persona),
-        "gender": clean_optional(gender),
+        "q": clean_optional(q),
     }
     pagination = search_teachers_page(
         db,
@@ -461,20 +465,14 @@ def teacher_detail_page(
 def students_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
-    grade_label: Optional[str] = None,
-    section_code: Optional[str] = None,
-    nie: Optional[str] = None,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(require_roles(*STUDENT_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-        "grade_label": clean_optional(grade_label),
-        "section_code": clean_optional(section_code),
-        "nie": clean_optional(nie),
+        "q": clean_optional(q),
     }
     pagination = search_students_page(
         db,
@@ -580,14 +578,14 @@ def student_detail_page(
 def directors_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(require_roles(*DIRECTOR_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
+        "q": clean_optional(q),
     }
     pagination = list_director_assignments_page(
         db,
@@ -613,22 +611,14 @@ def directors_page(
 def assignments_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
-    grade_label: Optional[str] = None,
-    section_name: Optional[str] = None,
-    id_persona: Optional[str] = None,
-    component_type: Optional[str] = None,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(require_roles(*TEACHER_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-        "grade_label": clean_optional(grade_label),
-        "section_name": clean_optional(section_name),
-        "id_persona": clean_optional(id_persona),
-        "component_type": clean_optional(component_type),
+        "q": clean_optional(q),
     }
     pagination = search_assignments_page(
         db,
@@ -726,24 +716,14 @@ def assignment_detail_page(
 def enrollments_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
-    grade_label: Optional[str] = None,
-    section_code: Optional[str] = None,
-    modality: Optional[str] = None,
-    submodality: Optional[str] = None,
-    nie: Optional[str] = None,
+    q: Optional[str] = None,
     page: Optional[str] = None,
     current_user: User = Depends(require_roles(*STUDENT_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-        "grade_label": clean_optional(grade_label),
-        "section_code": clean_optional(section_code),
-        "modality": clean_optional(modality),
-        "submodality": clean_optional(submodality),
-        "nie": clean_optional(nie),
+        "q": clean_optional(q),
     }
     pagination = search_enrollments_page(
         db,

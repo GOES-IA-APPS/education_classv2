@@ -1,236 +1,385 @@
 {% extends "base.html" %}
-{% block title %}Dashboard | Edu Registry Monolith{% endblock %}
-{% block heading %}Dashboard{% endblock %}
+{% block title %}Panel principal | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Panel principal{% endblock %}
+{% block subheading %}
+{% if current_user.role_code == "teacher" %}
+Gestiona tu jornada docente con acceso rápido a asignaciones, alumnos vinculados y seguimiento académico visible.
+{% elif current_user.role_code == "principal" %}
+Supervisa tu centro escolar con un panel claro para dirección, personal y comportamiento de matrícula.
+{% elif current_user.role_code == "student" %}
+Consulta tu información escolar visible, matrícula y comunicación institucional desde un solo lugar.
+{% elif current_user.role_code == "student_tutor" %}
+Da seguimiento a la información escolar de tus hijos y revisa avisos relevantes del centro educativo.
+{% else %}
+Opera la gestión escolar con una vista institucional equilibrada, clara y preparada para trabajo diario.
+{% endif %}
+{% endblock %}
 {% block content %}
-<section class="card">
-  <div class="section-heading">
-    <div>
-      <h2>Resumen institucional</h2>
-      <p class="muted">Este panel combina el alcance del rol con el esquema heredado y las extensiones seguras del monolito.</p>
+<section class="dashboard-hero">
+  <div class="dashboard-hero-copy">
+    <p class="eyebrow">Bienvenida institucional</p>
+    <h2>
+      {% if current_user.role_code == "teacher" %}
+      Tu jornada docente empieza aquí
+      {% elif current_user.role_code == "principal" %}
+      Visión integral de tu centro escolar
+      {% elif current_user.role_code == "student" %}
+      Tu espacio escolar disponible
+      {% elif current_user.role_code == "student_tutor" %}
+      Seguimiento escolar para la familia
+      {% elif current_user.role_code == "administrative" %}
+      Operación administrativa con foco académico
+      {% else %}
+      Gestión escolar con visión institucional
+      {% endif %}
+    </h2>
+    <p>
+      {% if current_user.role_code == "teacher" %}
+      Revisa carga académica, alumnos visibles y accesos clave para continuar tu trabajo con claridad.
+      {% elif current_user.role_code == "principal" %}
+      Consulta indicadores esenciales, personal docente, matrícula y avisos recientes para tomar decisiones con contexto.
+      {% elif current_user.role_code == "student" %}
+      Accede a tu ficha visible, información de matrícula y novedades institucionales autorizadas.
+      {% elif current_user.role_code == "student_tutor" %}
+      Consulta avances visibles, boletas disponibles y avisos importantes relacionados con tus hijos.
+      {% else %}
+      Mantén el control de escuelas, docentes, alumnos, asignaciones y matrículas desde una vista clara y ordenada.
+      {% endif %}
+    </p>
+    <div class="dashboard-hero-meta">
+      <span class="badge">{{ role_label(current_user.role_code) }}</span>
+      <span class="badge">{{ current_user.school_code or "Cobertura nacional" }}</span>
+      <span class="badge">Base heredada preservada</span>
     </div>
-    <span class="scope-chip">{{ role_label(current_user.role_code) }}</span>
   </div>
-  {% if stats.schools == 0 %}
-  <div class="alert warning">La base local aún no tiene datos heredados cargados. Importa el ZIP real para ver escuelas, docentes, alumnos, asignaciones y matrículas en estas vistas.</div>
-  {% elif stats.report_cards == 0 and stats.announcements == 0 %}
-  <div class="alert info">Las tablas heredadas pueden ya tener datos visibles. Notas, boletas y anuncios pertenecen a la capa nueva del sistema y pueden iniciar vacíos hasta que se registren.</div>
+
+  <aside class="dashboard-hero-aside">
+    <div class="dashboard-note-card">
+      <span class="dashboard-note-label">Estado del sistema</span>
+      {% if stats.schools == 0 %}
+      <strong>Sin datos heredados cargados</strong>
+      <p>Cuando se importe la base institucional, aquí aparecerán escuelas, docentes, alumnos y matrículas visibles para tu perfil.</p>
+      {% elif stats.report_cards == 0 and stats.announcements == 0 %}
+      <strong>Operación base disponible</strong>
+      <p>Las tablas heredadas ya pueden consultarse. Notas, boletas y anuncios se habilitan conforme se registren en la capa nueva.</p>
+      {% else %}
+      <strong>Panel listo para consulta</strong>
+      <p>El entorno ya muestra datos visibles de tu alcance y te permite navegar a los módulos más usados.</p>
+      {% endif %}
+    </div>
+  </aside>
+</section>
+
+<section class="dashboard-kpi-grid">
+  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+  <article class="dashboard-kpi-card is-primary">
+    <span class="dashboard-kpi-label">Escuelas</span>
+    <strong>{{ stats.schools }}</strong>
+    <p>Instituciones visibles dentro de tu alcance.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Docentes</span>
+    <strong>{{ stats.teachers }}</strong>
+    <p>Personal docente actualmente visible.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Alumnos</span>
+    <strong>{{ stats.students }}</strong>
+    <p>Estudiantes visibles según tu perfil.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Matrículas</span>
+    <strong>{{ stats.enrollments }}</strong>
+    <p>Registros de matrícula consultables.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Asignaciones</span>
+    <strong>{{ stats.assignments }}</strong>
+    <p>Carga académica y componentes visibles.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Directores</span>
+    <strong>{{ stats.directors }}</strong>
+    <p>Asignaciones de dirección identificadas.</p>
+  </article>
+  {% elif current_user.role_code == "teacher" %}
+  <article class="dashboard-kpi-card is-primary">
+    <span class="dashboard-kpi-label">Asignaciones</span>
+    <strong>{{ stats.assignments }}</strong>
+    <p>Registros académicos visibles para tu jornada.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Alumnos</span>
+    <strong>{{ stats.students }}</strong>
+    <p>Alumnos relacionados con tus asignaciones.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Matrículas</span>
+    <strong>{{ stats.enrollments }}</strong>
+    <p>Matrículas visibles en tu alcance docente.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Notas</span>
+    <strong>{{ stats.grade_records }}</strong>
+    <p>Registros de notas accesibles para tu rol.</p>
+  </article>
+  {% else %}
+  <article class="dashboard-kpi-card is-primary">
+    <span class="dashboard-kpi-label">Escuelas</span>
+    <strong>{{ stats.schools }}</strong>
+    <p>Cobertura visible dentro de tu sesión.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Matrículas</span>
+    <strong>{{ stats.enrollments }}</strong>
+    <p>Información académica disponible.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Boletas</span>
+    <strong>{{ stats.report_cards }}</strong>
+    <p>Documentos visibles en este entorno.</p>
+  </article>
+  <article class="dashboard-kpi-card">
+    <span class="dashboard-kpi-label">Anuncios</span>
+    <strong>{{ stats.announcements }}</strong>
+    <p>Mensajes recientes autorizados para tu perfil.</p>
+  </article>
   {% endif %}
 </section>
 
-<section class="stats-grid">
-  <article class="stat-card">
-    <span>Escuelas</span>
-    <strong>{{ stats.schools }}</strong>
+<section class="dashboard-grid">
+  <article class="card dashboard-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Accesos rápidos</h2>
+        <p class="muted">Entradas directas a las tareas más útiles de tu rol.</p>
+      </div>
+    </div>
+    <div class="dashboard-actions">
+      <a class="dashboard-action-card" href="/schools">
+        <strong>Escuelas</strong>
+        <span>Consultar instituciones y navegar por centro escolar.</span>
+      </a>
+      {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+      <a class="dashboard-action-card" href="/teachers">
+        <strong>Docentes</strong>
+        <span>Revisar personal docente y ficha individual.</span>
+      </a>
+      <a class="dashboard-action-card" href="/assignments">
+        <strong>Asignaciones</strong>
+        <span>Consultar carga académica y relación docente-sección.</span>
+      </a>
+      {% endif %}
+      <a class="dashboard-action-card" href="/students">
+        <strong>Alumnos</strong>
+        <span>Ubicar expedientes visibles y datos escolares.</span>
+      </a>
+      <a class="dashboard-action-card" href="/enrollments">
+        <strong>Matrículas</strong>
+        <span>Revisar registros vigentes por escuela y sección.</span>
+      </a>
+      {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+      <a class="dashboard-action-card" href="/reports">
+        <strong>Reportes</strong>
+        <span>Consultar indicadores y consolidado institucional.</span>
+      </a>
+      {% endif %}
+    </div>
   </article>
-  <article class="stat-card">
-    <span>Usuarios</span>
-    <strong>{{ stats.users }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Docentes</span>
-    <strong>{{ stats.teachers }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Alumnos</span>
-    <strong>{{ stats.students }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Directores</span>
-    <strong>{{ stats.directors }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Asignaciones</span>
-    <strong>{{ stats.assignments }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Matrículas</span>
-    <strong>{{ stats.enrollments }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Notas</span>
-    <strong>{{ stats.grade_records }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Boletas</span>
-    <strong>{{ stats.report_cards }}</strong>
-  </article>
-  <article class="stat-card">
-    <span>Anuncios</span>
-    <strong>{{ stats.announcements }}</strong>
+
+  <article class="card dashboard-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Avisos recientes</h2>
+        <p class="muted">Comunicación institucional disponible para tu perfil.</p>
+      </div>
+    </div>
+    <div class="dashboard-notices">
+      {% for row in breakdown.recent_announcements[:4] %}
+      <article class="dashboard-notice-item">
+        <strong>{{ row.title }}</strong>
+        <span>{{ row.school_code or "Cobertura general" }}</span>
+        <p>Publicado: {{ row.publication_date or "Fecha no disponible" }}</p>
+      </article>
+      {% else %}
+      <div class="empty-state">
+        <h3>Sin avisos recientes</h3>
+        <p>Los nuevos anuncios institucionales aparecerán aquí cuando estén visibles para tu rol.</p>
+      </div>
+      {% endfor %}
+    </div>
   </article>
 </section>
 
-<section class="grid two">
-  <article class="card">
-    <h2>Rol actual</h2>
-    <p>{{ role_label(current_user.role_code) }}</p>
-    <p class="muted">Este tablero SSR refleja el alcance real del rol sobre escuelas, docentes, alumnos, asignaciones y matrículas sin mutar destructivamente el legado.</p>
+{% if current_user.role_code in ["admin", "principal", "administrative", "teacher"] %}
+<section class="dashboard-grid">
+  <article class="card dashboard-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Docentes por escuela</h2>
+        <p class="muted">Cobertura docente dentro del alcance actual.</p>
+      </div>
+    </div>
+    <div class="table-shell">
+      <table class="table dashboard-table-compact">
+        <thead>
+          <tr>
+            <th>Escuela</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in breakdown.teachers_by_school %}
+          <tr>
+            <td><a href="/schools/{{ row.school_code }}">{{ row.school_code }}</a></td>
+            <td>{{ row.total }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="2">No hay datos visibles en este alcance.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </article>
 
-  <article class="card">
-    <h2>Alcance</h2>
-    <p>Escuela asociada: {{ current_user.school_code or "Cobertura nacional" }}</p>
-    <p class="muted">La capa académica usa las tablas heredadas tal como existen y las complementa con tablas nuevas seguras para materias, notas, boletas, anuncios y recuperación de acceso.</p>
+  <article class="card dashboard-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Alumnos por escuela</h2>
+        <p class="muted">Distribución visible de matrícula estudiantil.</p>
+      </div>
+    </div>
+    <div class="table-shell">
+      <table class="table dashboard-table-compact">
+        <thead>
+          <tr>
+            <th>Escuela</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in breakdown.students_by_school %}
+          <tr>
+            <td><a href="/schools/{{ row.school_code }}">{{ row.school_code }}</a></td>
+            <td>{{ row.total }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="2">No hay datos visibles en este alcance.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </article>
 </section>
 
-<section class="grid two">
-  <article class="card">
+<section class="dashboard-grid">
+  <article class="card dashboard-panel">
     <div class="section-heading">
-      <h2>Docentes por escuela</h2>
+      <div>
+        <h2>Asignaciones por año</h2>
+        <p class="muted">Lectura rápida del comportamiento académico reciente.</p>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Escuela</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.teachers_by_school %}
-        <tr>
-          <td><a href="/schools/{{ row.school_code }}">{{ row.school_code }}</a></td>
-          <td>{{ row.total }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="2">No hay datos en el alcance actual.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-shell">
+      <table class="table dashboard-table-compact">
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in breakdown.assignments_by_year %}
+          <tr>
+            <td>{{ row.academic_year }}</td>
+            <td>{{ row.total }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="2">No hay asignaciones visibles para este rol.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </article>
 
-  <article class="card">
+  <article class="card dashboard-panel">
     <div class="section-heading">
-      <h2>Alumnos por escuela</h2>
+      <div>
+        <h2>Matrículas por grado y sección</h2>
+        <p class="muted">Resumen útil para seguimiento escolar.</p>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Escuela</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.students_by_school %}
-        <tr>
-          <td><a href="/schools/{{ row.school_code }}">{{ row.school_code }}</a></td>
-          <td>{{ row.total }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="2">No hay datos en el alcance actual.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </article>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Asignaciones por año</h2>
+    <div class="table-shell">
+      <table class="table dashboard-table-compact">
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Grado</th>
+            <th>Sección</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in breakdown.enrollments_by_grade_section %}
+          <tr>
+            <td>{{ row.academic_year }}</td>
+            <td>{{ row.grade_label or "-" }}</td>
+            <td>{{ row.section_code or "-" }}</td>
+            <td>{{ row.total }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4">No hay matrículas visibles para este rol.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Año</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.assignments_by_year %}
-        <tr>
-          <td>{{ row.academic_year }}</td>
-          <td>{{ row.total }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="2">No hay datos en el alcance actual.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </article>
-
-  <article class="card">
-    <div class="section-heading">
-      <h2>Matrículas por grado y sección</h2>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Año</th>
-          <th>Grado</th>
-          <th>Sección</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.enrollments_by_grade_section %}
-        <tr>
-          <td>{{ row.academic_year }}</td>
-          <td>{{ row.grade_label or "-" }}</td>
-          <td>{{ row.section_code or "-" }}</td>
-          <td>{{ row.total }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4">No hay datos en el alcance actual.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </article>
 </section>
+{% endif %}
 
-<section class="grid two">
-  <article class="card">
+<section class="dashboard-grid">
+  <article class="card dashboard-panel">
     <div class="section-heading">
-      <h2>Boletas recientes</h2>
+      <div>
+        <h2>Boletas recientes</h2>
+        <p class="muted">Últimos documentos académicos visibles en tu alcance.</p>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Escuela</th>
-          <th>NIE</th>
-          <th>Año</th>
-          <th>Promedio</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.recent_report_cards %}
-        <tr>
-          <td>{{ row.school_code or "-" }}</td>
-          <td><a href="/report-cards/{{ row.id }}">{{ row.student_nie }}</a></td>
-          <td>{{ row.academic_year }}</td>
-          <td>{{ row.overall_average }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4">No hay boletas recientes visibles.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    {% if breakdown.recent_report_cards %}
+    <div class="dashboard-record-list">
+      {% for row in breakdown.recent_report_cards[:4] %}
+      <a class="dashboard-record-card" href="/report-cards/{{ row.id }}">
+        <strong>{{ row.student_nie }}</strong>
+        <span>{{ row.school_code or "Escuela no indicada" }}</span>
+        <p>Año {{ row.academic_year }} · Promedio {{ row.overall_average }}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Sin boletas recientes</h3>
+      <p>Las boletas emitidas y visibles para tu perfil aparecerán aquí cuando existan registros disponibles.</p>
+    </div>
+    {% endif %}
   </article>
 
-  <article class="card">
+  <article class="card dashboard-panel">
     <div class="section-heading">
-      <h2>Anuncios recientes</h2>
+      <div>
+        <h2>Lectura institucional</h2>
+        <p class="muted">Recordatorio breve del enfoque técnico y operativo del sistema.</p>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Escuela</th>
-          <th>Título</th>
-          <th>Publicado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in breakdown.recent_announcements %}
-        <tr>
-          <td>{{ row.school_code or "Global" }}</td>
-          <td><a href="/announcements/{{ row.id }}">{{ row.title }}</a></td>
-          <td>{{ row.publication_date.strftime("%Y-%m-%d") if row.publication_date else "-" }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="3">No hay anuncios recientes visibles.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="dashboard-context-list">
+      <article class="dashboard-context-item">
+        <strong>Modelo heredado preservado</strong>
+        <p>Escuelas, docentes, alumnos, asignaciones y matrículas continúan operando sobre el esquema real sin alteración destructiva.</p>
+      </article>
+      <article class="dashboard-context-item">
+        <strong>Extensiones seguras del monolito</strong>
+        <p>Usuarios, notas, boletas, anuncios y tutores se integran como capas nuevas para ampliar funcionalidad sin comprometer compatibilidad.</p>
+      </article>
+    </div>
   </article>
 </section>
 {% endblock %}

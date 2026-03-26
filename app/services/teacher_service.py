@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models import Teacher, TeacherAssignment, User
@@ -16,6 +17,18 @@ from app.utils.cache import invalidate_namespace
 from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
 
 
+def _teacher_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(Teacher.id_persona, "")).like(query),
+        func.lower(func.coalesce(Teacher.nip, "")).like(query),
+        func.lower(func.coalesce(Teacher.dui, "")).like(query),
+        func.lower(func.coalesce(Teacher.first_names, "")).like(query),
+        func.lower(func.coalesce(Teacher.last_names, "")).like(query),
+        func.lower(func.coalesce(Teacher.specialty, "")).like(query),
+    )
+
+
 def search_teachers(
     db: Session,
     current_user: User,
@@ -23,6 +36,7 @@ def search_teachers(
     school_code: str | None = None,
     id_persona: str | None = None,
     gender: str | None = None,
+    q: str | None = None,
 ) -> list[Teacher]:
     stmt = visible_teachers_stmt(db, current_user).options(*TEACHER_LIST_OPTIONS)
     if school_code:
@@ -31,6 +45,8 @@ def search_teachers(
         stmt = stmt.where(Teacher.id_persona == id_persona)
     if gender:
         stmt = stmt.where(Teacher.gender == gender)
+    if q:
+        stmt = stmt.where(_teacher_search_clause(q))
     return list_teachers(db, stmt)
 
 
@@ -41,6 +57,7 @@ def search_teachers_page(
     school_code: str | None = None,
     id_persona: str | None = None,
     gender: str | None = None,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[Teacher]:
@@ -51,6 +68,8 @@ def search_teachers_page(
         base_stmt = base_stmt.where(Teacher.id_persona == id_persona)
     if gender:
         base_stmt = base_stmt.where(Teacher.gender == gender)
+    if q:
+        base_stmt = base_stmt.where(_teacher_search_clause(q))
     fetch_stmt = base_stmt.options(*TEACHER_LIST_OPTIONS)
     return paginate_entities(
         db,
@@ -71,6 +90,7 @@ def search_teachers_page(
                 "school_code": school_code,
                 "id_persona": id_persona,
                 "gender": gender,
+                "q": q,
             },
         },
     )

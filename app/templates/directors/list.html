@@ -1,54 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Directores | Edu Registry Monolith{% endblock %}
-{% block heading %}Directores Derivados{% endblock %}
+{% block title %}Directores | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Directores{% endblock %}
+{% block subheading %}La vista presenta asignaciones identificadas como dirección dentro del esquema heredado, con filtros simples y legibles para trabajo institucional.{% endblock %}
 {% block content %}
-<section class="card">
-  <div class="section-heading">
-    <h2>Filtro de directores</h2>
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Dirección escolar</p>
+    <h2>Directores derivados desde asignaciones</h2>
+    <p>Esta lectura usa el valor <code>DIRECTOR</code> dentro de las asignaciones visibles para identificar funciones directivas sin modificar la estructura original de la base.</p>
   </div>
-  <form method="get" action="/directors" class="filters-grid">
-    <label>Escuela
-      <select name="school_code">
-        <option value="">Todas</option>
-        {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
 </section>
 
 <section class="card">
   <div class="section-heading">
-    <h2>Asignaciones con <code>component_type = DIRECTOR</code></h2>
-    <span class="muted">{{ pagination.total }} registro(s)</span>
+    <div>
+      <h2>Listado de directores</h2>
+      <p class="muted">{{ pagination.total }} registro(s) detectados en el alcance actual.</p>
+    </div>
   </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Escuela</th>
-        <th>Año</th>
-        <th>Docente</th>
-        <th>Grado</th>
-        <th>Sección</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for assignment in director_assignments %}
-      <tr>
-        <td><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></td>
-        <td>{{ assignment.academic_year }}</td>
-        <td><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.teacher.full_name or assignment.id_persona }}</a></td>
-        <td>{{ assignment.grade_label or "-" }}</td>
-        <td>{{ assignment.section_name or assignment.section_id or "-" }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5">No hay directores visibles bajo el alcance actual.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  <form method="get" action="/directors" class="toolbar-filters">
+    <label>
+      Escuela
+      <select name="school_code">
+        <option value="">Todas las escuelas</option>
+        {% for school in schools %}
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Docente, grado, sección o identificación">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/directors" class="button secondary inline">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Dirección escolar visible</span>
+    {% endif %}
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if director_assignments %}
+  <div class="table-shell">
+    <table class="table responsive-table">
+      <thead>
+        <tr>
+          <th>Escuela</th>
+          <th>Responsable</th>
+          <th>Referencia académica</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in director_assignments %}
+        <tr>
+          <td data-label="Escuela">
+            <div class="table-cell-stack">
+              <a href="/schools/{{ assignment.school_code }}" class="table-primary-link">{{ assignment.school.name if assignment.school else assignment.school_code }}</a>
+              <span class="table-meta">Código {{ assignment.school_code }}</span>
+            </div>
+          </td>
+          <td data-label="Responsable">
+            <div class="table-cell-stack">
+              <a href="/teachers/{{ assignment.id_persona }}" class="table-primary-link">{{ assignment.teacher.full_name or assignment.id_persona }}</a>
+              <span class="table-meta">ID persona {{ assignment.id_persona }}</span>
+            </div>
+          </td>
+          <td data-label="Referencia académica">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">Año {{ assignment.academic_year }}</span>
+              <span class="table-pill subtle">{{ assignment.grade_label or "Sin grado" }}</span>
+              <span class="table-pill subtle">{{ assignment.section_name or assignment.section_id or "Sin sección" }}</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/assignments/{{ assignment.id }}" class="table-action-link">Ver asignación</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos responsables de dirección con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Ajusta la escuela seleccionada o usa una búsqueda más amplia para revisar otras asignaciones con componente de dirección.</p>
+    {% else %}
+    <p>No hay asignaciones directivas visibles para tu sesión en este momento.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

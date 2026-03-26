@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.models import StudentEnrollment, User
+from app.models import Student, StudentEnrollment, User
 from app.repositories.enrollments import (
     ENROLLMENT_LIST_OPTIONS,
     get_enrollment_by_id,
@@ -16,6 +17,27 @@ from app.utils.cache import invalidate_namespace
 from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
 
 
+def _enrollment_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(StudentEnrollment.nie, "")).like(query),
+        func.lower(func.coalesce(StudentEnrollment.grade_label, "")).like(query),
+        func.lower(func.coalesce(StudentEnrollment.section_code, "")).like(query),
+        func.lower(func.coalesce(StudentEnrollment.modality, "")).like(query),
+        func.lower(func.coalesce(StudentEnrollment.submodality, "")).like(query),
+        StudentEnrollment.student.has(
+            or_(
+                func.lower(func.coalesce(Student.first_name1, "")).like(query),
+                func.lower(func.coalesce(Student.first_name2, "")).like(query),
+                func.lower(func.coalesce(Student.first_name3, "")).like(query),
+                func.lower(func.coalesce(Student.last_name1, "")).like(query),
+                func.lower(func.coalesce(Student.last_name2, "")).like(query),
+                func.lower(func.coalesce(Student.last_name3, "")).like(query),
+            )
+        ),
+    )
+
+
 def search_enrollments(
     db: Session,
     current_user: User,
@@ -27,6 +49,7 @@ def search_enrollments(
     modality: str | None = None,
     submodality: str | None = None,
     nie: str | None = None,
+    q: str | None = None,
 ) -> list[StudentEnrollment]:
     stmt = visible_enrollments_stmt(db, current_user).options(*ENROLLMENT_LIST_OPTIONS)
     if school_code:
@@ -43,6 +66,8 @@ def search_enrollments(
         stmt = stmt.where(StudentEnrollment.submodality == submodality)
     if nie:
         stmt = stmt.where(StudentEnrollment.nie == nie)
+    if q:
+        stmt = stmt.where(_enrollment_search_clause(q))
     return list_enrollments(db, stmt)
 
 
@@ -57,6 +82,7 @@ def search_enrollments_page(
     modality: str | None = None,
     submodality: str | None = None,
     nie: str | None = None,
+    q: str | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PER_PAGE,
 ) -> PaginationResult[StudentEnrollment]:
@@ -75,6 +101,8 @@ def search_enrollments_page(
         base_stmt = base_stmt.where(StudentEnrollment.submodality == submodality)
     if nie:
         base_stmt = base_stmt.where(StudentEnrollment.nie == nie)
+    if q:
+        base_stmt = base_stmt.where(_enrollment_search_clause(q))
     fetch_stmt = base_stmt.options(*ENROLLMENT_LIST_OPTIONS)
     return paginate_entities(
         db,
@@ -105,6 +133,7 @@ def search_enrollments_page(
                 "modality": modality,
                 "submodality": submodality,
                 "nie": nie,
+                "q": q,
             },
         },
     )

@@ -3,84 +3,218 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Edu Registry Monolith{% endblock %}</title>
+  <title>{% block title %}Sistema de Gestión Escolar{% endblock %}</title>
   <link rel="stylesheet" href="/static/styles.css">
   <script defer src="/static/app.js"></script>
 </head>
-<body>
+<body class="app-body">
+  <button class="sidebar-overlay" type="button" data-sidebar-close aria-label="Cerrar navegación"></button>
   <div class="shell">
-    <aside class="sidebar">
-      <a href="/dashboard" class="brand">
-        <span class="brand-seal">SGE</span>
-        <span class="brand-copy">
-          <span class="brand-kicker">Sistema institucional</span>
-          <strong>Sistema de Gestión Escolar</strong>
-          <small>Monolito SSR compatible con el esquema heredado</small>
-        </span>
-      </a>
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-watermark" aria-hidden="true">
+        <img src="/static/brand/logo-gob-seal.png" alt="">
+      </div>
+
+      <div class="sidebar-head">
+        <a href="/dashboard" class="brand">
+          <img
+            src="/static/brand/logo-gob-horizontal.png"
+            alt="Gobierno de El Salvador"
+            class="brand-logo"
+          >
+          <span class="brand-copy">
+            <span class="brand-kicker">Portal institucional académico</span>
+            <strong>Sistema de Gestión Escolar</strong>
+            <small>Plataforma institucional compatible con la base heredada</small>
+          </span>
+        </a>
+        <div class="sidebar-head-actions">
+          <button class="sidebar-collapse" type="button" data-sidebar-collapse aria-label="Colapsar menú">
+            <span></span>
+            <span></span>
+          </button>
+          <button class="sidebar-close" type="button" data-sidebar-close aria-label="Cerrar menú">
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
 
       {% if current_user %}
       <div class="profile-card">
-        <p class="muted">Sesión activa</p>
-        <h2>{{ current_user.full_name }}</h2>
-        <p>{{ role_label(current_user.role_code) }}</p>
+        <div class="profile-card-head">
+          <div class="profile-avatar">{{ current_user.full_name[:1] }}</div>
+          <div>
+            <p class="muted inline">Sesión activa</p>
+            <h2>{{ current_user.full_name }}</h2>
+          </div>
+        </div>
+        <div class="profile-meta">
+          <span class="scope-chip">{{ role_label(current_user.role_code) }}</span>
+          {% if current_user.school_code %}
+          <span class="scope-chip">{{ current_user.school_code }}</span>
+          {% endif %}
+        </div>
         <small>{{ current_user.email }}</small>
-        {% if current_user.school_code %}
-        <small>Escuela: {{ current_user.school_code }}</small>
-        {% endif %}
       </div>
 
-      <nav class="nav">
-        <span class="nav-label">General</span>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/schools">Escuelas</a>
+      <nav class="nav" aria-label="Navegación principal">
+        <div class="nav-group">
+          <span class="nav-label">General</span>
+          <a href="/dashboard">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Panel principal</span>
+          </a>
+          <a href="/schools">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 20h16M6 20V8l6-3 6 3v12M9 11h.01M15 11h.01M9 15h.01M15 15h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Escuelas</span>
+          </a>
+        </div>
 
         {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
-        <span class="nav-label">Académico</span>
-        <a href="/teachers">Docentes</a>
-        <a href="/assignments">Asignaciones</a>
-        <a href="/grades">Notas</a>
-        <a href="/report-cards">Boletas</a>
+        <div class="nav-group">
+          <span class="nav-label">Gestión académica</span>
+          <a href="/teachers">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Docentes</span>
+          </a>
+          <a href="/assignments">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 5h10M7 12h10M7 19h7M5 5h.01M5 12h.01M5 19h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Asignaciones</span>
+          </a>
+          <a href="/grades">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12a2 2 0 0 1 2 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Notas</span>
+          </a>
+          <a href="/report-cards">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 3h8l4 4v14H4V3h4Zm8 0v4h4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Boletas</span>
+          </a>
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "teacher", "student", "student_tutor", "administrative"] %}
-        <a href="/students">Alumnos</a>
-        <a href="/enrollments">Matrículas</a>
-        {% endif %}
-
-        {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-        <a href="/directors">Directores</a>
+        <div class="nav-group">
+          <span class="nav-label">Comunidad educativa</span>
+          <a href="/students">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Alumnos</span>
+          </a>
+          <a href="/enrollments">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5z" stroke="currentColor" stroke-width="1.7"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Matrículas</span>
+          </a>
+          {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+          <a href="/directors">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="m12 4 7 4v5c0 4.2-2.4 6.9-7 8-4.6-1.1-7-3.8-7-8V8l7-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 12.5 11 14l3.5-3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Directores</span>
+          </a>
+          {% endif %}
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
-        <span class="nav-label">Catálogos</span>
-        <a href="/catalogs/grades">Grados</a>
-        <a href="/catalogs/sections">Secciones</a>
-        <a href="/catalogs/modalities">Modalidades</a>
-        <a href="/catalogs/subjects">Materias</a>
+        <div class="nav-group">
+          <span class="nav-label">Catálogos</span>
+          <a href="/catalogs/grades">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 6h10M7 12h10M7 18h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Grados</span>
+          </a>
+          <a href="/catalogs/sections">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Secciones</span>
+          </a>
+          <a href="/catalogs/modalities">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.7"/></svg>
+            </span>
+            <span>Modalidades</span>
+          </a>
+          <a href="/catalogs/subjects">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10a2 2 0 0 1 2 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Materias</span>
+          </a>
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "student_tutor", "administrative"] %}
-        <span class="nav-label">Familias</span>
-        <a href="/tutors">Tutores</a>
-        {% if current_user.role_code == "student_tutor" %}
-        <a href="/parent-portal">Portal familiar</a>
-        {% endif %}
+        <div class="nav-group">
+          <span class="nav-label">Familias y apoyo</span>
+          <a href="/tutors">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM3.5 19a5.5 5.5 0 0 1 11 0M14 19a4 4 0 0 1 7 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Tutores</span>
+          </a>
+          {% if current_user.role_code == "student_tutor" %}
+          <a href="/parent-portal">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 4l8 3.5-8 3.5-8-3.5ZM6 10.5V16l6 3 6-3v-5.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Portal familiar</span>
+          </a>
+          {% endif %}
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "teacher", "student", "student_tutor", "administrative"] %}
-        <span class="nav-label">Comunicación</span>
-        <a href="/announcements">Anuncios</a>
+        <div class="nav-group">
+          <span class="nav-label">Comunicación</span>
+          <a href="/announcements">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 15.5V8.8a2 2 0 0 1 1.3-1.88l9-3.3A2 2 0 0 1 18 5.5v13a2 2 0 0 1-2.7 1.88l-9-3.3A2 2 0 0 1 5 15.5ZM5 10h-2v4h2M8 18l1 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Anuncios</span>
+          </a>
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
-        <span class="nav-label">Reportes</span>
-        <a href="/reports">Reportes</a>
+        <div class="nav-group">
+          <span class="nav-label">Seguimiento</span>
+          <a href="/reports">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Reportes</span>
+          </a>
+        </div>
         {% endif %}
 
         {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-        <span class="nav-label">Sistema</span>
-        <a href="/users">Usuarios</a>
+        <div class="nav-group">
+          <span class="nav-label">Administración</span>
+          <a href="/users">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM5 20a7 7 0 0 1 14 0M19 8h2M20 7v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </span>
+            <span>Usuarios</span>
+          </a>
+        </div>
         {% endif %}
       </nav>
 
@@ -92,26 +226,43 @@
 
     <main class="content">
       <header class="topbar">
-        <div class="topbar-copy">
-          <p class="topbar-kicker">Operación escolar con compatibilidad primero</p>
-          <h1>{% block heading %}Panel{% endblock %}</h1>
+        <div class="topbar-main">
+          <button class="topbar-menu" type="button" data-sidebar-toggle aria-label="Abrir navegación">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="topbar-copy">
+            <p class="topbar-kicker">Sistema institucional de gestión escolar</p>
+            <h1>{% block heading %}Panel{% endblock %}</h1>
+            <p class="topbar-subtitle">{% block subheading %}Operación escolar clara, compatible y centrada en la gestión académica diaria.{% endblock %}</p>
+          </div>
         </div>
+
         <div class="topbar-meta">
+          <button class="topbar-collapse" type="button" data-sidebar-collapse aria-label="Colapsar navegación">
+            <span></span>
+            <span></span>
+          </button>
           {% if current_user %}
           <span class="scope-chip">{{ role_label(current_user.role_code) }}</span>
           <span class="scope-chip">{{ current_user.school_code or "Cobertura nacional" }}</span>
           {% endif %}
           {% if current_user and current_user.role_code == "student_tutor" %}
-          <a class="button" href="/parent-portal">Ir al portal familiar</a>
+          <a class="button secondary" href="/parent-portal">Ir al portal familiar</a>
           {% endif %}
         </div>
       </header>
+
       {% if current_user %}
       <section class="page-note">
-        <p>Las vistas extensas usan paginado de 15 registros y cache de 1 hora por usuario y filtros para reducir carga repetitiva sobre la base. Usa filtros para ubicar más rápido la información.</p>
+        <p>La interfaz prioriza lectura clara, navegación estable y trabajo institucional ágil en escritorio, tableta y móvil.</p>
       </section>
       {% endif %}
-      {% block content %}{% endblock %}
+
+      <div class="page-body">
+        {% block content %}{% endblock %}
+      </div>
     </main>
   </div>
 </body>

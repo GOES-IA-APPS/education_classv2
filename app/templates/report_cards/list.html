@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Boletas | Edu Registry Monolith{% endblock %}
+{% block title %}Boletas | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Boletas de Notas{% endblock %}
+{% block subheading %}Emite boletas con una estructura clara, vinculada a matrícula y a responsables académicos visibles en el sistema.{% endblock %}
 {% block content %}
 <section class="card">
   <div class="section-heading">
@@ -52,7 +53,7 @@
           <td>{{ card.overall_average or "-" }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5">No hay boletas visibles.</td></tr>
+        <tr><td colspan="5">No hay boletas disponibles para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -60,18 +61,39 @@
 
   {% if current_user.role_code in ["admin", "principal", "administrative"] %}
   <article class="card">
-    <h2>Emitir boleta</h2>
-    <form action="/report-cards" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code" required></label>
-      <label>NIE<input type="text" name="student_nie" required></label>
-      <label>ID matrícula<input type="number" name="enrollment_id"></label>
-      <label>Año académico<input type="number" name="academic_year" required></label>
-      <label>Grado<input type="text" name="grade_label"></label>
-      <label>Sección<input type="text" name="section_code"></label>
-      <label>Docente responsable<input type="text" name="responsible_teacher_id_persona"></label>
-      <label>Director responsable<input type="text" name="responsible_director_id_persona"></label>
-      <label>Observaciones<textarea name="observations"></textarea></label>
-      <button type="submit" class="button">Generar boleta</button>
+    <div class="form-header">
+      <h2>Emitir boleta</h2>
+      <p>Genera una boleta académica vinculada al estudiante, la escuela y los responsables visibles en el sistema.</p>
+    </div>
+    <form action="/report-cards" method="post" class="form-panel">
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Referencia institucional</strong>
+          <p>Asocia la boleta al alumno y a su contexto académico principal.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>Escuela</span><input type="text" name="school_code" required><small>Código institucional de la escuela emisora.</small></label>
+          <label><span>NIE</span><input type="text" name="student_nie" required><small>Alumno para el que se emitirá la boleta.</small></label>
+          <label><span>ID matrícula</span><input type="number" name="enrollment_id"><small>Opcional si ya existe un registro de matrícula relacionado.</small></label>
+          <label><span>Año académico</span><input type="number" name="academic_year" required></label>
+          <label><span>Grado</span><input type="text" name="grade_label"></label>
+          <label><span>Sección</span><input type="text" name="section_code"></label>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Responsables y observaciones</strong>
+          <p>Define la firma académica visible y agrega notas institucionales si son necesarias.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>Docente responsable</span><input type="text" name="responsible_teacher_id_persona"></label>
+          <label><span>Director responsable</span><input type="text" name="responsible_director_id_persona"></label>
+          <label class="field-span-2"><span>Observaciones</span><textarea name="observations"></textarea><small>Se mostrará como nota complementaria en la boleta emitida.</small></label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Generar boleta</button>
+      </div>
     </form>
   </article>
   {% endif %}

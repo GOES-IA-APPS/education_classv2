@@ -1,26 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Asignación {{ assignment.id }} | Edu Registry Monolith{% endblock %}
-{% block heading %}Asignación {{ assignment.id }}{% endblock %}
+{% block title %}Asignación {{ assignment.id }} | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Detalle de asignación{% endblock %}
+{% block subheading %}Consulta la composición académica de una asignación docente preservando las relaciones reales entre docente, escuela y año académico.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Asignación académica</p>
+    <h2>{{ assignment.teacher.full_name or assignment.id_persona }}</h2>
+    <p>Registro académico visible para el año {{ assignment.academic_year }} dentro de la escuela {{ assignment.school_code }}.</p>
+  </div>
+  <div class="inline-meta">
+    <span class="badge">{{ assignment.school_code }}</span>
+    <span class="badge">{{ assignment.academic_year }}</span>
+    <span class="badge">{{ assignment.component_type or "Sin componente" }}</span>
+  </div>
+</section>
+
 <section class="grid two">
   <article class="card">
-    <h2>Detalle académico</h2>
+    <div class="section-heading">
+      <div>
+        <h2>Detalle académico</h2>
+        <p class="muted">Información visible tomada de la tabla heredada <code>teacher_assignments</code>.</p>
+      </div>
+    </div>
     <div class="detail-grid">
       <div><strong>Docente</strong><span><a href="/teachers/{{ assignment.id_persona }}">{{ assignment.teacher.full_name or assignment.id_persona }}</a></span></div>
       <div><strong>Escuela</strong><span><a href="/schools/{{ assignment.school_code }}">{{ assignment.school_code }}</a></span></div>
       <div><strong>Año académico</strong><span>{{ assignment.academic_year }}</span></div>
-      <div><strong>Componente</strong><span>{{ assignment.component_type or "-" }}</span></div>
-      <div><strong>Grado</strong><span>{{ assignment.grade_label or "-" }}</span></div>
-      <div><strong>Sección ID</strong><span>{{ assignment.section_id or "-" }}</span></div>
-      <div><strong>Sección nombre</strong><span>{{ assignment.section_name or "-" }}</span></div>
-      <div><strong>Turno</strong><span>{{ assignment.shift or "-" }}</span></div>
-      <div><strong>Código adscrito</strong><span>{{ assignment.cod_adscrito or "-" }}</span></div>
+      <div><strong>Componente</strong><span>{{ assignment.component_type or "No indicado" }}</span></div>
+      <div><strong>Grado</strong><span>{{ assignment.grade_label or "No indicado" }}</span></div>
+      <div><strong>Sección ID</strong><span>{{ assignment.section_id or "No indicada" }}</span></div>
+      <div><strong>Sección nombre</strong><span>{{ assignment.section_name or "No indicada" }}</span></div>
+      <div><strong>Turno</strong><span>{{ assignment.shift or "No indicado" }}</span></div>
+      <div><strong>Código adscrito</strong><span>{{ assignment.cod_adscrito or "No indicado" }}</span></div>
     </div>
   </article>
 
   <article class="card">
-    <h2>Compatibilidad</h2>
-    <p class="muted">Esta vista usa directamente <code>teacher_assignments</code>, respetando la relación real por <code>id_persona</code> y <code>school_code</code>. No se normaliza destructivamente la base heredada.</p>
+    <div class="section-heading">
+      <div>
+        <h2>Compatibilidad</h2>
+        <p class="muted">Lectura segura del modelo heredado.</p>
+      </div>
+    </div>
+    <p>La vista mantiene la relación real entre <code>id_persona</code> y <code>school_code</code> sin reestructurar destructivamente el dato productivo.</p>
   </article>
 </section>
 {% endblock %}

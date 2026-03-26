@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usuario recuperado | Edu Registry Monolith</title>
+  <title>Usuario recuperado | Sistema de Gestión Escolar</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="auth-body">
@@ -17,7 +17,7 @@
       {% if error %}
       <div class="alert error">{{ error }}</div>
       {% else %}
-      <div class="alert success">Tu usuario de acceso es:</div>
+      <div class="alert success">Tu usuario de acceso registrado es:</div>
       <p><strong>{{ user.email }}</strong></p>
       {% endif %}
       <div class="auth-links">

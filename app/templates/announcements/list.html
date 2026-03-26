@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Anuncios | Edu Registry Monolith{% endblock %}
+{% block title %}Anuncios | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Anuncios e Informativos{% endblock %}
+{% block subheading %}Publica avisos institucionales con visibilidad controlada para personal, alumnos y familias según corresponda.{% endblock %}
 {% block content %}
 <section class="card">
   <div class="section-heading">
     <h2>Filtros</h2>
   </div>
   <form method="get" action="/announcements" class="filters-grid">
-    <label>Escuela
+    <label><span>Escuela</span>
       <select name="school_code">
         <option value="">Todas</option>
         {% for school in schools %}
@@ -15,8 +16,8 @@
         {% endfor %}
       </select>
     </label>
-    <label>Estado<input type="text" name="status" value="{{ filters.status or '' }}"></label>
-    <label>Visible para<input type="text" name="visible_to" value="{{ filters.visible_to or '' }}"></label>
+    <label><span>Estado</span><input type="text" name="status" value="{{ filters.status or '' }}"></label>
+    <label><span>Visible para</span><input type="text" name="visible_to" value="{{ filters.visible_to or '' }}"></label>
     <label class="inline"><input type="checkbox" name="upcoming_only" {% if filters.upcoming_only %}checked{% endif %}>Solo reuniones próximas</label>
     <button type="submit" class="button">Filtrar</button>
   </form>
@@ -49,7 +50,7 @@
           <td>{{ announcement.publication_date.strftime("%Y-%m-%d") if announcement.publication_date else "-" }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4">No hay anuncios visibles.</td></tr>
+        <tr><td colspan="4">No hay anuncios disponibles para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -57,30 +58,41 @@
 
   {% if current_user.role_code in ["admin", "principal", "administrative"] %}
   <article class="card">
-    <h2>Publicar anuncio</h2>
-    <form action="/announcements" method="post" class="form-grid">
-      <label>Escuela<input type="text" name="school_code"></label>
-      <label>Visible para
-        <select name="visible_to">
-          <option value="all">Todos</option>
-          <option value="staff">Personal</option>
-          <option value="teacher">Docentes</option>
-          <option value="student">Estudiantes</option>
-          <option value="student_tutor">Tutores</option>
-        </select>
-      </label>
-      <label>Título<input type="text" name="title" required></label>
-      <label>Contenido<textarea name="content" required></textarea></label>
-      <label>Fecha de publicación<input type="datetime-local" name="publication_date"></label>
-      <label>Fecha de evento/reunión<input type="datetime-local" name="event_date"></label>
-      <label>Estado
-        <select name="status">
-          <option value="published">Publicado</option>
-          <option value="draft">Borrador</option>
-          <option value="archived">Archivado</option>
-        </select>
-      </label>
-      <button type="submit" class="button">Guardar anuncio</button>
+    <div class="form-header">
+      <h2>Publicar anuncio</h2>
+      <p>Configura el alcance del aviso, su estado editorial y la fecha en la que debe mostrarse a la comunidad educativa.</p>
+    </div>
+    <form action="/announcements" method="post" class="form-panel">
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code"><small>Déjalo vacío para un aviso global.</small></label>
+        <label>
+          <span>Visible para</span>
+          <select name="visible_to">
+            <option value="all">Todos</option>
+            <option value="staff">Personal</option>
+            <option value="teacher">Docentes</option>
+            <option value="student">Estudiantes</option>
+            <option value="student_tutor">Tutores</option>
+          </select>
+          <small>Define el público que verá el anuncio.</small>
+        </label>
+        <label class="field-span-2"><span>Título</span><input type="text" name="title" required><small>Encabezado breve y claro para el aviso institucional.</small></label>
+        <label class="field-span-2"><span>Contenido</span><textarea name="content" required></textarea><small>Redacta el mensaje con instrucciones o contexto útil para el público objetivo.</small></label>
+        <label><span>Fecha de publicación</span><input type="datetime-local" name="publication_date"></label>
+        <label><span>Fecha de evento o reunión</span><input type="datetime-local" name="event_date"></label>
+        <label class="field-span-2">
+          <span>Estado</span>
+          <select name="status">
+            <option value="published">Publicado</option>
+            <option value="draft">Borrador</option>
+            <option value="archived">Archivado</option>
+          </select>
+          <small>Usa borrador para revisar el contenido antes de hacerlo visible.</small>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar anuncio</button>
+      </div>
     </form>
   </article>
   {% endif %}

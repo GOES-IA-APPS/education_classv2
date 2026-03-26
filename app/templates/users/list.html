@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Usuarios | Edu Registry Monolith{% endblock %}
+{% block title %}Usuarios | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Usuarios del Sistema{% endblock %}
+{% block subheading %}Administra accesos institucionales con una estructura clara de roles, alcance por escuela y vínculos seguros con docentes o alumnos.{% endblock %}
 {% block content %}
 <section class="grid two">
   <article class="card">
@@ -26,39 +27,87 @@
           <td>{{ user.school_code or "-" }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4">No hay usuarios visibles.</td></tr>
+        <tr><td colspan="4">No hay usuarios disponibles para tu alcance actual.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </article>
 
   <article class="card">
-    <h2>Crear usuario</h2>
+    <div class="form-header">
+      <h2>Crear usuario</h2>
+      <p>Completa la cuenta institucional y, cuando aplique, vincúlala a una escuela, un docente o un alumno.</p>
+    </div>
     {% if error %}
     <div class="alert error">{{ error }}</div>
     {% endif %}
-    <form action="/users" method="post" class="form-grid">
-      <label>Correo<input type="email" name="email" required></label>
-      <label>Nombre completo<input type="text" name="full_name" required></label>
-      <label>Contraseña<input type="password" name="password" required></label>
-      <label>Rol
-        <select name="role_code" required>
-          {% for role_code in role_codes %}
-          <option value="{{ role_code }}">{{ role_label(role_code) }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>Escuela
-        <select name="school_code">
-          <option value="">Sin escuela</option>
-          {% for school in schools %}
-          <option value="{{ school.code }}">{{ school.code }} · {{ school.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>ID Persona docente<input type="text" name="teacher_id_persona"></label>
-      <label>NIE alumno<input type="text" name="student_nie"></label>
-      <button type="submit" class="button">Crear usuario</button>
+    <form action="/users" method="post" class="form-panel">
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Datos de acceso</strong>
+          <p>Esta información define la identidad del usuario dentro del sistema.</p>
+        </div>
+        <div class="form-grid">
+          <label>
+            <span>Correo</span>
+            <input type="email" name="email" required>
+            <small>Será el identificador principal de acceso.</small>
+          </label>
+          <label>
+            <span>Nombre completo</span>
+            <input type="text" name="full_name" required>
+            <small>Nombre visible en navegación y paneles.</small>
+          </label>
+          <label>
+            <span>Contraseña</span>
+            <input type="password" name="password" required>
+            <small>Debe cumplir las reglas fuertes del sistema.</small>
+          </label>
+          <label>
+            <span>Rol</span>
+            <select name="role_code" required>
+              {% for role_code in role_codes %}
+              <option value="{{ role_code }}">{{ role_label(role_code) }}</option>
+              {% endfor %}
+            </select>
+            <small>Define el alcance funcional y la navegación disponible.</small>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Vinculación institucional</strong>
+          <p>Usa estos campos cuando la cuenta deba asociarse a una escuela, un docente o un alumno específico.</p>
+        </div>
+        <div class="form-grid">
+          <label>
+            <span>Escuela</span>
+            <select name="school_code">
+              <option value="">Sin escuela</option>
+              {% for school in schools %}
+              <option value="{{ school.code }}">{{ school.code }} · {{ school.name }}</option>
+              {% endfor %}
+            </select>
+            <small>Obligatorio para perfiles con alcance institucional definido.</small>
+          </label>
+          <label>
+            <span>ID persona docente</span>
+            <input type="text" name="teacher_id_persona">
+            <small>Completa este valor si la cuenta representa a un docente.</small>
+          </label>
+          <label class="field-span-2">
+            <span>NIE alumno</span>
+            <input type="text" name="student_nie">
+            <small>Completa este valor si la cuenta corresponde a un alumno.</small>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="button">Crear usuario</button>
+        <p class="muted">La cuenta se guarda como extensión segura sin tocar tablas heredadas.</p>
+      </div>
     </form>
   </article>
 </section>

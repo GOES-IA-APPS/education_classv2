@@ -589,3 +589,84 @@ def test_operational_lists_use_pagination_and_school_navigation_buttons_render(c
 
     assert school_detail.status_code == 200
     assert 'class="button nav-action"' in school_detail.text
+
+
+def test_school_filter_and_general_search_drive_teacher_and_student_lists(client, db_session):
+    seed_academic_fixture(db_session)
+
+    db_session.add_all(
+        [
+            School(
+                code="SCH-B",
+                name="Centro Escolar Beta",
+                sector="PRIVADO",
+                zone="RURAL",
+                department_code=2,
+                municipality_code=202,
+            ),
+            Teacher(
+                id=20,
+                id_persona="DOC-020",
+                first_names="Patricia",
+                last_names="Gomez",
+                specialty="Ciencias",
+                gender="F",
+            ),
+            Student(
+                id=20,
+                nie="NIE-020",
+                first_name1="Mario",
+                last_name1="Luna",
+                gender="M",
+                age_current=12,
+            ),
+            TeacherAssignment(
+                id=220,
+                id_persona="DOC-020",
+                school_code="SCH-B",
+                academic_year=2026,
+                component_type="DOCENTE",
+                grade_label="7",
+                section_id="C",
+                section_name="C",
+                shift="TARDE",
+                cod_adscrito="ADS-20",
+            ),
+            StudentEnrollment(
+                id=320,
+                nie="NIE-020",
+                school_code="SCH-B",
+                academic_year=2026,
+                section_code="C",
+                grade_label="7",
+                modality="PRESENCIAL",
+                submodality="REGULAR",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    login(client, "admin@example.org", "Admin!234")
+
+    teachers_filtered = client.get("/teachers?school_code=SCH-A")
+    students_filtered = client.get("/students?school_code=SCH-A")
+    teachers_search = client.get("/teachers?school_code=SCH-A&q=Maria")
+    students_search = client.get("/students?school_code=SCH-A&q=Ana")
+
+    assert teachers_filtered.status_code == 200
+    assert "Maria Elena Lopez Rivera" in teachers_filtered.text
+    assert "Patricia Gomez" not in teachers_filtered.text
+    assert "Escuela seleccionada: SCH-A" in teachers_filtered.text
+
+    assert students_filtered.status_code == 200
+    assert "Ana Garcia" in students_filtered.text
+    assert "Mario Luna" not in students_filtered.text
+    assert "Escuela seleccionada: SCH-A" in students_filtered.text
+
+    assert teachers_search.status_code == 200
+    assert "Maria Elena Lopez Rivera" in teachers_search.text
+    assert "Búsqueda: Maria" in teachers_search.text
+
+    assert students_search.status_code == 200
+    assert "Ana Garcia" in students_search.text
+    assert "Búsqueda: Ana" in students_search.text

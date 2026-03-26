@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Tutores | Edu Registry Monolith{% endblock %}
+{% block title %}Tutores | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Tutores{% endblock %}
+{% block subheading %}Gestiona tutores como extensión segura del sistema, con vínculo opcional a alumnos y acceso al portal familiar cuando aplique.{% endblock %}
 {% block content %}
 <section class="card">
   <div class="section-heading">
@@ -40,7 +41,7 @@
           <td>{{ tutor.student_links|length }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4">No hay tutores visibles.</td></tr>
+        <tr><td colspan="4">No hay tutores disponibles para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -48,21 +49,56 @@
 
   {% if current_user.role_code in ["admin", "principal", "administrative"] %}
   <article class="card">
-    <h2>Registrar tutor</h2>
-    <form action="/tutors" method="post" class="form-grid">
-      <label>Nombre completo<input type="text" name="full_name" required></label>
-      <label>Correo<input type="email" name="email"></label>
-      <label>Teléfono<input type="text" name="phone"></label>
-      <label>DUI<input type="text" name="dui"></label>
-      <label>Dirección<textarea name="address"></textarea></label>
-      <label>Notas<textarea name="notes"></textarea></label>
-      <label>NIE del alumno a vincular<input type="text" name="student_nie"></label>
-      <label>Relación<input type="text" name="relationship_label" placeholder="Padre, madre, tutor legal..."></label>
-      <label class="inline"><input type="checkbox" name="is_primary">Tutor principal</label>
-      <label>Correo del usuario tutor<input type="email" name="user_email"></label>
-      <label>Contraseña del usuario tutor<input type="password" name="user_password"></label>
-      <label>Nombre del usuario tutor<input type="text" name="user_full_name"></label>
-      <button type="submit" class="button">Guardar tutor</button>
+    <div class="form-header">
+      <h2>Registrar tutor</h2>
+      <p>Registra la referencia familiar, el vínculo con el alumno y, si lo necesitas, el acceso al portal familiar.</p>
+    </div>
+    <form action="/tutors" method="post" class="form-panel">
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Datos del tutor</strong>
+          <p>Información principal de contacto y referencia personal.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>Nombre completo</span><input type="text" name="full_name" required></label>
+          <label><span>Correo</span><input type="email" name="email"><small>Correo principal del tutor.</small></label>
+          <label><span>Teléfono</span><input type="text" name="phone"></label>
+          <label><span>DUI</span><input type="text" name="dui"></label>
+          <label class="field-span-2"><span>Dirección</span><textarea name="address"></textarea></label>
+          <label class="field-span-2"><span>Notas</span><textarea name="notes"></textarea><small>Usa este espacio solo para contexto institucional relevante.</small></label>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Vinculación con alumno</strong>
+          <p>Conecta el tutor con un alumno existente y define el tipo de relación.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>NIE del alumno a vincular</span><input type="text" name="student_nie"></label>
+          <label><span>Relación</span><input type="text" name="relationship_label" placeholder="Padre, madre, tutor legal..."></label>
+          <label class="checkbox-field field-span-2">
+            <input type="checkbox" name="is_primary">
+            <span class="checkbox-copy">
+              <strong>Tutor principal</strong>
+              <small>Marca esta opción si será la referencia familiar prioritaria.</small>
+            </span>
+          </label>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-heading">
+          <strong>Acceso al portal familiar</strong>
+          <p>Completa estos campos solo si también deseas crear la cuenta de acceso del tutor.</p>
+        </div>
+        <div class="form-grid">
+          <label><span>Correo del usuario tutor</span><input type="email" name="user_email"></label>
+          <label><span>Contraseña del usuario tutor</span><input type="password" name="user_password"></label>
+          <label class="field-span-2"><span>Nombre del usuario tutor</span><input type="text" name="user_full_name"></label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="button">Guardar tutor</button>
+      </div>
     </form>
   </article>
   {% endif %}

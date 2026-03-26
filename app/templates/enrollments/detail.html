@@ -1,24 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Matrícula {{ enrollment.id }} | Edu Registry Monolith{% endblock %}
-{% block heading %}Matrícula {{ enrollment.id }}{% endblock %}
+{% block title %}Matrícula {{ enrollment.id }} | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Detalle de matrícula{% endblock %}
+{% block subheading %}Consulta la composición académica de una matrícula visible preservando el vínculo real por NIE y escuela dentro del modelo heredado.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Matrícula escolar</p>
+    <h2>{{ enrollment.student.full_name or enrollment.nie }}</h2>
+    <p>Registro visible correspondiente al año {{ enrollment.academic_year }} dentro de la escuela {{ enrollment.school_code }}.</p>
+  </div>
+  <div class="inline-meta">
+    <span class="badge">{{ enrollment.nie }}</span>
+    <span class="badge">{{ enrollment.school_code }}</span>
+    <span class="badge">{{ enrollment.grade_label or "Sin grado" }}</span>
+  </div>
+</section>
+
 <section class="grid two">
   <article class="card">
-    <h2>Detalle académico</h2>
+    <div class="section-heading">
+      <div>
+        <h2>Detalle académico</h2>
+        <p class="muted">Información visible tomada de la tabla heredada <code>student_enrollments</code>.</p>
+      </div>
+    </div>
     <div class="detail-grid">
       <div><strong>Alumno</strong><span><a href="/students/{{ enrollment.nie }}">{{ enrollment.student.full_name or enrollment.nie }}</a></span></div>
       <div><strong>Escuela</strong><span><a href="/schools/{{ enrollment.school_code }}">{{ enrollment.school_code }}</a></span></div>
       <div><strong>Año académico</strong><span>{{ enrollment.academic_year }}</span></div>
-      <div><strong>Grado</strong><span>{{ enrollment.grade_label or "-" }}</span></div>
-      <div><strong>Sección</strong><span>{{ enrollment.section_code or "-" }}</span></div>
-      <div><strong>Modalidad</strong><span>{{ enrollment.modality or "-" }}</span></div>
-      <div><strong>Submodalidad</strong><span>{{ enrollment.submodality or "-" }}</span></div>
+      <div><strong>Grado</strong><span>{{ enrollment.grade_label or "No indicado" }}</span></div>
+      <div><strong>Sección</strong><span>{{ enrollment.section_code or "No indicada" }}</span></div>
+      <div><strong>Modalidad</strong><span>{{ enrollment.modality or "No indicada" }}</span></div>
+      <div><strong>Submodalidad</strong><span>{{ enrollment.submodality or "No indicada" }}</span></div>
     </div>
   </article>
 
   <article class="card">
-    <h2>Compatibilidad</h2>
-    <p class="muted">La matrícula visible proviene de <code>student_enrollments</code> y preserva el vínculo real por <code>nie</code> y <code>school_code</code>.</p>
+    <div class="section-heading">
+      <div>
+        <h2>Compatibilidad</h2>
+        <p class="muted">Relación segura con el legado.</p>
+      </div>
+    </div>
+    <p>La matrícula se presenta respetando el vínculo real entre <code>nie</code> y <code>school_code</code>, sin reescritura destructiva del esquema base.</p>
   </article>
 </section>
 {% endblock %}
