@@ -10,7 +10,6 @@ GRADE_RECORD_LIST_OPTIONS = (
     joinedload(GradeRecord.student),
     joinedload(GradeRecord.teacher),
     joinedload(GradeRecord.teacher_assignment).joinedload(TeacherAssignment.school),
-    joinedload(GradeRecord.subject_catalog),
 )
 
 

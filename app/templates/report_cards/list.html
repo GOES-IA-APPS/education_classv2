@@ -1,101 +1,173 @@
 {% extends "base.html" %}
 {% block title %}Boletas | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Boletas de Notas{% endblock %}
-{% block subheading %}Emite boletas con una estructura clara, vinculada a matrícula y a responsables académicos visibles en el sistema.{% endblock %}
+{% block subheading %}Consulta boletas emitidas por escuela y localiza registros por alumno, NIE, grado, sección o año desde una sola búsqueda visible.{% endblock %}
 {% block content %}
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
+
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Documentos académicos</p>
+    <h2>Boletas visibles</h2>
+    <p>Esta vista reúne las boletas emitidas y facilita el acceso rápido a detalle, edición y eliminación segura sin sobrecargar la pantalla con filtros innecesarios.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "administrative"] and not compatibility_mode %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Emitir boleta</strong>
+        <small>Genera una nueva boleta vinculada al alumno, su matrícula y los responsables académicos visibles.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/report-cards" method="post" class="form-panel">
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Referencia institucional</strong>
+            <p>Asocia la boleta al contexto escolar y académico correcto.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>Escuela</span><input type="text" name="school_code" required><small>Código institucional de la escuela emisora.</small></label>
+            <label><span>NIE</span><input type="text" name="student_nie" required><small>Alumno para el que se emitirá la boleta.</small></label>
+            <label><span>ID matrícula</span><input type="number" name="enrollment_id"><small>Opcional si ya existe una matrícula relacionada.</small></label>
+            <label><span>Año académico</span><input type="number" name="academic_year" required></label>
+            <label><span>Grado</span><input type="text" name="grade_label"></label>
+            <label><span>Sección</span><input type="text" name="section_code"></label>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Responsables y observaciones</strong>
+            <p>Define las firmas visibles en la boleta y las notas institucionales si son necesarias.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>Docente responsable</span><input type="text" name="responsible_teacher_id_persona"></label>
+            <label><span>Director responsable</span><input type="text" name="responsible_director_id_persona"></label>
+            <label class="field-span-2"><span>Observaciones</span><textarea name="observations"></textarea><small>Se mostrarán como nota general del documento.</small></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Generar boleta</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado de boletas</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu sesión.</p>
+    </div>
   </div>
-  <form method="get" action="/report-cards" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/report-cards" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
-    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
-    <label>NIE<input type="text" name="student_nie" value="{{ filters.student_nie or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Listado</h2>
-      <span class="muted">{{ report_cards|length }} registro(s)</span>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="NIE, alumno, escuela, grado, sección o estado">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/report-cards" class="button secondary inline">Limpiar</a>
+      {% endif %}
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Cobertura de boletas completa</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if report_cards %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>Escuela</th>
-          <th>NIE</th>
-          <th>Año</th>
-          <th>Grado</th>
-          <th>Promedio</th>
+          <th>Alumno</th>
+          <th>Escuela y contexto</th>
+          <th>Rendimiento</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for card in report_cards %}
         <tr>
-          <td>{{ card.school_code }}</td>
-          <td><a href="/report-cards/{{ card.id }}">{{ card.student_nie }}</a></td>
-          <td>{{ card.academic_year }}</td>
-          <td>{{ card.grade_label or "-" }}</td>
-          <td>{{ card.overall_average or "-" }}</td>
+          <td data-label="Alumno">
+            <div class="table-cell-stack">
+              <a href="/report-cards/{{ card.id }}" class="table-primary-link">{{ card.student.full_name if card.student else card.student_nie }}</a>
+              <span class="table-meta">NIE {{ card.student_nie }}</span>
+            </div>
+          </td>
+          <td data-label="Escuela y contexto">
+            <div class="table-cell-stack">
+              <strong>{{ card.school.name if card.school else card.school_code }}</strong>
+              <span class="table-meta">{{ card.school_code }} · {{ card.academic_year }} · {{ card.grade_label or "Sin grado" }} · {{ card.section_code or "Sin sección" }}</span>
+            </div>
+          </td>
+          <td data-label="Rendimiento">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">Promedio {{ card.overall_average or "-" }}</span>
+              <span class="table-pill subtle">{{ card.visible_item_count or 0 }} materia(s)</span>
+              <span class="table-pill subtle">{{ card.status or "Sin estado" }}</span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <div class="table-actions">
+              <a href="/report-cards/{{ card.id }}" class="table-action-link">Ver boleta</a>
+              {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+              <a href="/report-cards/{{ card.id }}?mode=edit" class="table-action-link secondary">Editar</a>
+              <form action="/report-cards/{{ card.id }}/delete" method="post" class="inline-form" data-delete-form>
+                <input type="hidden" name="delete_confirmation" value="">
+                <input type="hidden" name="next" value="/report-cards">
+                <button type="submit" class="table-action-link danger">Eliminar</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="5">No hay boletas disponibles para los filtros seleccionados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-  </article>
-
-  {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-  <article class="card">
-    <div class="form-header">
-      <h2>Emitir boleta</h2>
-      <p>Genera una boleta académica vinculada al estudiante, la escuela y los responsables visibles en el sistema.</p>
-    </div>
-    <form action="/report-cards" method="post" class="form-panel">
-      <div class="form-section">
-        <div class="form-section-heading">
-          <strong>Referencia institucional</strong>
-          <p>Asocia la boleta al alumno y a su contexto académico principal.</p>
-        </div>
-        <div class="form-grid">
-          <label><span>Escuela</span><input type="text" name="school_code" required><small>Código institucional de la escuela emisora.</small></label>
-          <label><span>NIE</span><input type="text" name="student_nie" required><small>Alumno para el que se emitirá la boleta.</small></label>
-          <label><span>ID matrícula</span><input type="number" name="enrollment_id"><small>Opcional si ya existe un registro de matrícula relacionado.</small></label>
-          <label><span>Año académico</span><input type="number" name="academic_year" required></label>
-          <label><span>Grado</span><input type="text" name="grade_label"></label>
-          <label><span>Sección</span><input type="text" name="section_code"></label>
-        </div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-heading">
-          <strong>Responsables y observaciones</strong>
-          <p>Define la firma académica visible y agrega notas institucionales si son necesarias.</p>
-        </div>
-        <div class="form-grid">
-          <label><span>Docente responsable</span><input type="text" name="responsible_teacher_id_persona"></label>
-          <label><span>Director responsable</span><input type="text" name="responsible_director_id_persona"></label>
-          <label class="field-span-2"><span>Observaciones</span><textarea name="observations"></textarea><small>Se mostrará como nota complementaria en la boleta emitida.</small></label>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="button">Generar boleta</button>
-      </div>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos boletas con esos criterios</h3>
+    {% if compatibility_mode %}
+    <p>Este entorno local todavía no tiene creadas las tablas de boletas. La pantalla ya quedó lista y compatible, pero no puede mostrar registros hasta que ese esquema exista en esta base.</p>
+    {% elif filters.school_code or filters.q %}
+    <p>Prueba con otra escuela o con una búsqueda más amplia por NIE, alumno, grado, sección o estado.</p>
+    {% else %}
+    <p>No hay boletas visibles para tu sesión en este momento.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

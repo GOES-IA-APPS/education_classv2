@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, require_roles
 from app.db import get_db
 from app.models import User
-from app.routes.web import clean_optional, parse_optional_int, redirect, render
+from app.routes.web import build_url, clean_optional, parse_optional_int, redirect, render
 from app.schemas.phase3 import (
     AccessRecoveryRequest,
     AnnouncementCreate,
@@ -28,7 +28,7 @@ from app.services.announcement_service import (
 from app.services.grade_record_service import (
     create_grade_record_entry,
     get_grade_record_detail,
-    search_grade_records,
+    search_grade_records_page,
     update_grade_record_entry,
 )
 from app.services.parent_portal_service import parent_portal_snapshot
@@ -41,13 +41,17 @@ from app.services.recovery_service import (
     validate_access_recovery_token,
 )
 from app.services.report_card_service import (
+    delete_report_card_entry,
     get_report_card_detail,
     issue_report_card,
     search_report_cards,
+    search_report_cards_page,
+    update_report_card_entry,
 )
 from app.services.report_service import build_reports
 from app.services.school_service import visible_schools
 from app.services.subject_service import create_subject_catalog_record, search_subject_catalogs
+from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult, sanitize_page
 
 router = APIRouter()
 
@@ -74,6 +78,32 @@ def parse_optional_datetime(value: Optional[str]) -> Optional[datetime]:
     if not normalized:
         return None
     return datetime.fromisoformat(normalized)
+
+
+def _is_grades_compatibility_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        "Table 'edu_reg.subject_catalogs' doesn't exist" in message
+        or "Unknown column 'grade_records." in message
+    )
+
+
+def _is_report_cards_compatibility_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        "REPORT_CARDS_SCHEMA_UNAVAILABLE" in message
+        or "Table 'edu_reg.report_cards' doesn't exist" in message
+        or "Table 'edu_reg.report_card_items' doesn't exist" in message
+        or "Table 'edu_reg.subject_catalogs' doesn't exist" in message
+        or "Unknown column 'report_cards." in message
+    )
+
+
+def sanitize_report_cards_return_to(value: Optional[str], *, fallback: str = "/report-cards") -> str:
+    normalized = clean_optional(value)
+    if normalized and normalized.startswith("/report-cards"):
+        return normalized
+    return fallback
 
 
 @router.get("/catalogs/subjects", response_class=HTMLResponse)
@@ -149,36 +179,57 @@ def create_subject_catalog_action(
 def grades_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
-    grade_label: Optional[str] = None,
-    section_code: Optional[str] = None,
-    student_nie: Optional[str] = None,
-    teacher_id_persona: Optional[str] = None,
-    subject_name: Optional[str] = None,
+    q: Optional[str] = None,
+    page: Optional[str] = None,
     current_user: User = Depends(require_roles(*GRADE_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-        "grade_label": clean_optional(grade_label),
-        "section_code": clean_optional(section_code),
-        "student_nie": clean_optional(student_nie),
-        "teacher_id_persona": clean_optional(teacher_id_persona),
-        "subject_name": clean_optional(subject_name),
+        "q": clean_optional(q),
     }
-    return render(
-        request,
-        "grades/list.html",
-        {
-            "grade_records": search_grade_records(db, current_user, **filters),
-            "subjects": search_subject_catalogs(db, current_user),
-            "schools": visible_schools(db, current_user),
-            "filters": filters,
-            "error": None,
-        },
-        current_user=current_user,
-    )
+    page_number = sanitize_page(page)
+    try:
+        pagination = search_grade_records_page(
+            db,
+            current_user,
+            school_code=filters["school_code"],
+            q=filters["q"],
+            page=page_number,
+        )
+        return render(
+            request,
+            "grades/list.html",
+            {
+                "grade_records": pagination.items,
+                "schools": visible_schools(db, current_user),
+                "filters": filters,
+                "pagination": pagination,
+                "error": None,
+            },
+            current_user=current_user,
+        )
+    except Exception as e:
+        print("ERROR GRADES:", e)
+        if _is_grades_compatibility_error(e):
+            return render(
+                request,
+                "grades/list.html",
+                {
+                    "grade_records": [],
+                    "schools": visible_schools(db, current_user),
+                    "filters": filters,
+                    "pagination": PaginationResult(
+                        items=[],
+                        page=page_number,
+                        per_page=DEFAULT_PER_PAGE,
+                        total=0,
+                    ),
+                    "error": "La estructura local de notas no coincide todavía con el modelo extendido actual. El listado queda disponible sin registros hasta sincronizar ese esquema.",
+                },
+                current_user=current_user,
+            )
+        raise
 
 
 @router.post("/grades", response_class=HTMLResponse)
@@ -231,10 +282,15 @@ def create_grade_action(
             request,
             "grades/list.html",
             {
-                "grade_records": search_grade_records(db, current_user),
-                "subjects": search_subject_catalogs(db, current_user),
+                "grade_records": [],
                 "schools": visible_schools(db, current_user),
-                "filters": {},
+                "filters": {"school_code": None, "q": None},
+                "pagination": PaginationResult(
+                    items=[],
+                    page=1,
+                    per_page=DEFAULT_PER_PAGE,
+                    total=0,
+                ),
                 "error": str(exc),
             },
             current_user=current_user,
@@ -316,31 +372,60 @@ def update_grade_action(
 def report_cards_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
-    grade_label: Optional[str] = None,
-    section_code: Optional[str] = None,
-    student_nie: Optional[str] = None,
+    q: Optional[str] = None,
+    page: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
     current_user: User = Depends(require_roles(*REPORT_CARD_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
     filters = {
         "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-        "grade_label": clean_optional(grade_label),
-        "section_code": clean_optional(section_code),
-        "student_nie": clean_optional(student_nie),
+        "q": clean_optional(q),
     }
-    return render(
-        request,
-        "report_cards/list.html",
-        {
-            "report_cards": search_report_cards(db, current_user, **filters),
-            "schools": visible_schools(db, current_user),
-            "filters": filters,
-            "error": None,
-        },
-        current_user=current_user,
-    )
+    page_number = sanitize_page(page)
+    try:
+        pagination = search_report_cards_page(
+            db,
+            current_user,
+            school_code=filters["school_code"],
+            q=filters["q"],
+            page=page_number,
+        )
+        return render(
+            request,
+            "report_cards/list.html",
+            {
+                "report_cards": pagination.items,
+                "pagination": pagination,
+                "schools": visible_schools(db, current_user),
+                "filters": filters,
+                "error": None,
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+                "compatibility_mode": False,
+            },
+            current_user=current_user,
+        )
+    except Exception as e:
+        print("ERROR REPORT CARDS:", e)
+        if _is_report_cards_compatibility_error(e):
+            return render(
+                request,
+                "report_cards/list.html",
+                {
+                    "report_cards": [],
+                    "pagination": PaginationResult(items=[], page=page_number, per_page=DEFAULT_PER_PAGE, total=0),
+                    "schools": visible_schools(db, current_user),
+                    "filters": filters,
+                    "error": "La estructura local de boletas no está disponible todavía en esta base. El listado queda operativo sin registros mientras se sincroniza ese esquema.",
+                    "flash_type": clean_optional(flash_type),
+                    "flash_message": clean_optional(flash_message),
+                    "compatibility_mode": True,
+                },
+                current_user=current_user,
+            )
+        raise
 
 
 @router.post("/report-cards", response_class=HTMLResponse)
@@ -375,14 +460,25 @@ def issue_report_card_action(
             current_user,
         )
     except ValueError as exc:
+        compatibility_mode = _is_report_cards_compatibility_error(exc)
+        report_cards = [] if compatibility_mode else search_report_cards(db, current_user)
         return render(
             request,
             "report_cards/list.html",
             {
-                "report_cards": search_report_cards(db, current_user),
+                "report_cards": report_cards,
+                "pagination": PaginationResult(
+                    items=report_cards,
+                    page=1,
+                    per_page=DEFAULT_PER_PAGE,
+                    total=len(report_cards),
+                ),
                 "schools": visible_schools(db, current_user),
                 "filters": {},
                 "error": str(exc),
+                "flash_type": None,
+                "flash_message": None,
+                "compatibility_mode": compatibility_mode,
             },
             current_user=current_user,
             status_code=400,
@@ -390,21 +486,145 @@ def issue_report_card_action(
     return redirect("/report-cards")
 
 
+@router.post("/report-cards/{report_card_id}", response_class=HTMLResponse)
+def update_report_card_action(
+    request: Request,
+    report_card_id: int,
+    responsible_teacher_id_persona: str = Form(""),
+    responsible_director_id_persona: str = Form(""),
+    observations: str = Form(""),
+    status: str = Form("issued"),
+    current_user: User = Depends(require_roles(*REPORT_CARD_ISSUE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    try:
+        current_report_card = get_report_card_detail(db, current_user, report_card_id)
+    except Exception as e:
+        print("ERROR REPORT CARDS:", e)
+        if _is_report_cards_compatibility_error(e):
+            raise HTTPException(status_code=404, detail="La estructura local de boletas no está disponible todavía.")
+        raise
+    if not current_report_card:
+        raise HTTPException(status_code=404, detail="Boleta no encontrada.")
+
+    try:
+        update_report_card_entry(
+            db,
+            current_user,
+            report_card_id,
+            responsible_teacher_id_persona=clean_optional(responsible_teacher_id_persona),
+            responsible_director_id_persona=clean_optional(responsible_director_id_persona),
+            observations=clean_optional(observations),
+            status=clean_optional(status) or "issued",
+        )
+    except ValueError as exc:
+        return render(
+            request,
+            "report_cards/detail.html",
+            {
+                "report_card": current_report_card,
+                "error": str(exc),
+                "edit_mode": True,
+                "can_manage_report_cards": current_user.role_code in REPORT_CARD_ISSUE_ROLES,
+                "return_to": "/report-cards",
+                "flash_type": None,
+                "flash_message": None,
+            },
+            current_user=current_user,
+            status_code=400,
+        )
+
+    return redirect(
+        build_url(
+            f"/report-cards/{report_card_id}",
+            flash_type="success",
+            flash_message="Boleta actualizada correctamente.",
+        )
+    )
+
+
 @router.get("/report-cards/{report_card_id}", response_class=HTMLResponse)
 def report_card_detail_page(
     request: Request,
     report_card_id: int,
+    mode: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
     current_user: User = Depends(require_roles(*REPORT_CARD_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
-    report_card = get_report_card_detail(db, current_user, report_card_id)
-    if not report_card:
-        raise HTTPException(status_code=404, detail="Boleta no encontrada.")
-    return render(
-        request,
-        "report_cards/detail.html",
-        {"report_card": report_card},
-        current_user=current_user,
+    try:
+        report_card = get_report_card_detail(db, current_user, report_card_id)
+        if not report_card:
+            raise HTTPException(status_code=404, detail="Boleta no encontrada.")
+        return render(
+            request,
+            "report_cards/detail.html",
+            {
+                "report_card": report_card,
+                "error": None,
+                "edit_mode": mode == "edit" and current_user.role_code in REPORT_CARD_ISSUE_ROLES,
+                "can_manage_report_cards": current_user.role_code in REPORT_CARD_ISSUE_ROLES,
+                "return_to": "/report-cards",
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+            },
+            current_user=current_user,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ERROR REPORT CARDS:", e)
+        if _is_report_cards_compatibility_error(e):
+            raise HTTPException(status_code=404, detail="La estructura local de boletas no está disponible todavía.")
+        raise
+
+
+@router.post("/report-cards/{report_card_id}/delete")
+def delete_report_card_action(
+    report_card_id: int,
+    delete_confirmation: str = Form(""),
+    next: str = Form("/report-cards"),
+    current_user: User = Depends(require_roles(*REPORT_CARD_ISSUE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    return_to = sanitize_report_cards_return_to(next, fallback=f"/report-cards/{report_card_id}")
+    if delete_confirmation != "DELETE":
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="warning",
+                flash_message="Debes escribir DELETE para confirmar la eliminación.",
+            )
+        )
+
+    try:
+        delete_report_card_entry(db, current_user, report_card_id)
+    except ValueError as exc:
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="error",
+                flash_message=str(exc),
+            )
+        )
+    except Exception as exc:
+        if _is_report_cards_compatibility_error(exc):
+            return redirect(
+                build_url(
+                    return_to,
+                    flash_type="error",
+                    flash_message="La estructura local de boletas no está disponible todavía.",
+                )
+            )
+        raise
+
+    return redirect(
+        build_url(
+            "/report-cards",
+            flash_type="success",
+            flash_message="Eliminado con éxito.",
+        )
     )
 
 
@@ -415,15 +635,23 @@ def report_card_print_page(
     current_user: User = Depends(require_roles(*REPORT_CARD_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
-    report_card = get_report_card_detail(db, current_user, report_card_id)
-    if not report_card:
-        raise HTTPException(status_code=404, detail="Boleta no encontrada.")
-    return render(
-        request,
-        "report_cards/print.html",
-        {"report_card": report_card},
-        current_user=current_user,
-    )
+    try:
+        report_card = get_report_card_detail(db, current_user, report_card_id)
+        if not report_card:
+            raise HTTPException(status_code=404, detail="Boleta no encontrada.")
+        return render(
+            request,
+            "report_cards/print.html",
+            {"report_card": report_card},
+            current_user=current_user,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ERROR REPORT CARDS:", e)
+        if _is_report_cards_compatibility_error(e):
+            raise HTTPException(status_code=404, detail="La estructura local de boletas no está disponible todavía.")
+        raise
 
 
 @router.get("/announcements", response_class=HTMLResponse)

@@ -223,6 +223,89 @@ def test_admin_phase3_workflow_routes(client, db_session):
         assert expected_text in response.text
 
 
+def test_report_cards_detail_update_and_delete_actions_work(client, db_session):
+    seed_phase3_fixture(db_session)
+    report_card = ReportCard(
+        school_code="SCH-P3",
+        student_nie="NIE-P3",
+        enrollment_id=60,
+        academic_year=2026,
+        grade_label="8",
+        section_code="C",
+        responsible_teacher_id_persona="DOC-P3",
+        responsible_director_id_persona="DOC-DIR",
+        overall_average=89.5,
+        observations="Observacion inicial",
+        status="issued",
+    )
+    report_card.items.append(
+        ReportCardItem(
+            subject_code="SCI",
+            subject_name="Ciencias",
+            evaluation_count=2,
+            final_score=89.5,
+            observations="Buen rendimiento",
+        )
+    )
+    db_session.add(report_card)
+    db_session.commit()
+    report_card_id = report_card.id
+
+    login(client, "admin@example.org", "Admin!234")
+
+    list_page = client.get("/report-cards")
+    assert list_page.status_code == 200
+    assert f"/report-cards/{report_card_id}?mode=edit" in list_page.text
+    assert f"/report-cards/{report_card_id}/delete" in list_page.text
+
+    detail_page = client.get(f"/report-cards/{report_card_id}")
+    assert detail_page.status_code == 200
+    assert "Editar" in detail_page.text
+    assert "Eliminar" in detail_page.text
+    assert "Observacion inicial" in detail_page.text
+
+    edit_page = client.get(f"/report-cards/{report_card_id}?mode=edit")
+    assert edit_page.status_code == 200
+    assert "Guardar cambios" in edit_page.text
+
+    update_response = client.post(
+        f"/report-cards/{report_card_id}",
+        data={
+            "responsible_teacher_id_persona": "DOC-P3",
+            "responsible_director_id_persona": "DOC-DIR",
+            "observations": "Boleta ajustada",
+            "status": "reviewed",
+        },
+        follow_redirects=False,
+    )
+    assert update_response.status_code == 303
+    assert f"/report-cards/{report_card_id}" in update_response.headers["location"]
+
+    db_session.expire_all()
+    updated_report_card = db_session.get(ReportCard, report_card_id)
+    assert updated_report_card is not None
+    assert updated_report_card.observations == "Boleta ajustada"
+    assert updated_report_card.status == "reviewed"
+
+    invalid_delete = client.post(
+        f"/report-cards/{report_card_id}/delete",
+        data={"delete_confirmation": "WRONG", "next": f"/report-cards/{report_card_id}"},
+        follow_redirects=False,
+    )
+    assert invalid_delete.status_code == 303
+    assert "Debes+escribir+DELETE" in invalid_delete.headers["location"]
+
+    delete_response = client.post(
+        f"/report-cards/{report_card_id}/delete",
+        data={"delete_confirmation": "DELETE", "next": "/report-cards"},
+        follow_redirects=False,
+    )
+    assert delete_response.status_code == 303
+    assert "Eliminado+con+%C3%A9xito." in delete_response.headers["location"]
+    db_session.expire_all()
+    assert db_session.get(ReportCard, report_card_id) is None
+
+
 def test_teacher_can_only_register_grades_for_real_assignment(client, db_session):
     seed_phase3_fixture(db_session)
     other_student = Student(id=41, nie="NIE-OUT", first_name1="Mario", last_name1="Fuera")
@@ -392,3 +475,50 @@ def test_access_recovery_flows_work(client):
     assert "actualizada correctamente" in reset_password.text
 
     login(client, "admin@example.org", "Admin!999")
+
+
+def test_grades_page_uses_school_and_general_search_filters(client, db_session):
+    seed_phase3_fixture(db_session)
+    login(client, "admin@example.org", "Admin!234")
+
+    admin = admin_user(db_session)
+    subject = SubjectCatalog(
+        id=501,
+        school_code="SCH-P3",
+        academic_year=2026,
+        grade_label="8",
+        subject_code="MAT",
+        subject_name="Matemática",
+        display_order=1,
+        source_type="manual",
+        is_active=True,
+    )
+    grade = GradeRecord(
+        school_code="SCH-P3",
+        student_nie="NIE-P3",
+        teacher_id_persona="DOC-P3",
+        teacher_assignment_id=50,
+        subject_catalog_id=501,
+        academic_year=2026,
+        grade_label="8",
+        section_code="C",
+        section_id="C",
+        subject_code="MAT",
+        subject_name="Matemática",
+        evaluation_type="TRIMESTRE",
+        evaluation_name="Primer trimestre",
+        weight=40,
+        score=89,
+        observations="Buen resultado",
+        created_by_user_id=admin.id,
+        updated_by_user_id=admin.id,
+    )
+    db_session.add_all([subject, grade])
+    db_session.commit()
+
+    response = client.get("/grades", params={"school_code": "SCH-P3", "q": "Matemática"})
+
+    assert response.status_code == 200
+    assert "Búsqueda general" in response.text
+    assert "Escuela seleccionada: SCH-P3" in response.text
+    assert "Matemática" in response.text

@@ -1,102 +1,181 @@
 {% extends "base.html" %}
 {% block title %}Catálogo de Grados | Sistema de Gestión Escolar{% endblock %}
-{% block heading %}Grados y Vista Académica{% endblock %}
+{% block heading %}Catálogo de grados{% endblock %}
+{% block subheading %}Consulta grados visibles por escuela y localiza rápidamente etiquetas académicas derivadas o manuales desde una sola pantalla operativa.{% endblock %}
 {% block content %}
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
+
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Catálogo académico</p>
+    <h2>Grados visibles</h2>
+    <p>Esta vista combina los grados derivados desde matrículas y asignaciones con los registros manuales complementarios cuando la estructura del catálogo está disponible en la base actual.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "administrative"] and not compatibility_mode %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar grado manual</strong>
+        <small>Complementa la vista derivada con un registro controlado manualmente.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/catalogs/grades" method="post" class="form-panel">
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Referencia académica</strong>
+            <p>Define la escuela, el año y la etiqueta del grado que necesitas mantener manualmente.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>Escuela</span><input type="text" name="school_code"><small>Déjalo vacío si el grado aplica de forma general.</small></label>
+            <label><span>Año académico</span><input type="number" name="academic_year"></label>
+            <label><span>Grado</span><input type="text" name="grade_label" required></label>
+            <label><span>Nombre de despliegue</span><input type="text" name="display_name"><small>Nombre visible opcional para documentos o pantallas.</small></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar grado</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado de grados</h2>
+      <p class="muted">{{ grade_rows|length }} registro(s) visibles en esta consulta.</p>
+    </div>
   </div>
-  <form method="get" action="/catalogs/grades" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/catalogs/grades" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>Año académico<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Grado, escuela o año académico">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/catalogs/grades" class="button secondary inline">Limpiar</a>
+      {% endif %}
+    </div>
   </form>
-</section>
 
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Vista derivada desde datos reales</h2>
-      <span class="muted">{{ derived_grades|length }} registro(s)</span>
-    </div>
-    <p class="muted">La vista derivada se limita a 200 filas para mantener navegación fluida. Aplica escuela y año para profundizar.</p>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Cobertura completa de grados</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+    {% if compatibility_mode %}
+    <span class="table-pill subtle">Catálogo manual no disponible en esta base local</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if grade_rows %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>Escuela</th>
-          <th>Año</th>
           <th>Grado</th>
+          <th>Escuela y año</th>
+          <th>Origen</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        {% for row in derived_grades %}
+        {% for grade in grade_rows %}
         <tr>
-          <td>{{ row.school_code or "-" }}</td>
-          <td>{{ row.academic_year or "-" }}</td>
-          <td>{{ row.grade_label }}</td>
+          <td data-label="Grado">
+            <div class="table-cell-stack">
+              <a
+                href="{% if grade.source_type == 'manual' %}/catalogs/grades/detail?source=manual&grade_id={{ grade.id }}{% else %}/catalogs/grades/detail?source=derived&school_code={{ grade.school_code or '' }}&academic_year={{ grade.academic_year or '' }}&grade_label={{ grade.grade_label }}{% endif %}"
+                class="table-primary-link"
+              >{{ grade.display_name or grade.grade_label }}</a>
+              {% if grade.display_name %}
+              <span class="table-meta">{{ grade.grade_label }}</span>
+              {% endif %}
+            </div>
+          </td>
+          <td data-label="Escuela y año">
+            <div class="table-cell-stack">
+              <strong>{{ grade.school_code or "General" }}</strong>
+              <span class="table-meta">Año {{ grade.academic_year or "-" }}</span>
+            </div>
+          </td>
+          <td data-label="Origen">
+            <div class="table-badge-group">
+              <span class="table-pill {% if grade.source_type == 'manual' %}sand{% else %}subtle{% endif %}">
+                {{ "Manual" if grade.source_type == "manual" else "Derivado" }}
+              </span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <div class="table-actions">
+              <a
+                href="{% if grade.source_type == 'manual' %}/catalogs/grades/detail?source=manual&grade_id={{ grade.id }}{% else %}/catalogs/grades/detail?source=derived&school_code={{ grade.school_code or '' }}&academic_year={{ grade.academic_year or '' }}&grade_label={{ grade.grade_label|urlencode }}{% endif %}"
+                class="table-action-link"
+              >Ver</a>
+              <a
+                href="{% if grade.source_type == 'manual' %}/catalogs/grades/detail?source=manual&grade_id={{ grade.id }}&mode=edit{% else %}/catalogs/grades/detail?source=derived&school_code={{ grade.school_code or '' }}&academic_year={{ grade.academic_year or '' }}&grade_label={{ grade.grade_label }}&mode=edit{% endif %}"
+                class="table-action-link secondary"
+              >Editar</a>
+              {% if grade.source_type == "manual" %}
+              <form action="/catalogs/grades/{{ grade.id }}/delete" method="post" class="inline-form" data-delete-form>
+                <input type="hidden" name="delete_confirmation" value="">
+                <input type="hidden" name="next" value="/catalogs/grades">
+                <button type="submit" class="table-action-link danger">Eliminar</button>
+              </form>
+              {% else %}
+              <form action="/catalogs/grades/delete-derived" method="post" class="inline-form" data-delete-form>
+                <input type="hidden" name="delete_confirmation" value="">
+                <input type="hidden" name="school_code" value="{{ grade.school_code or '' }}">
+                <input type="hidden" name="academic_year" value="{{ grade.academic_year or '' }}">
+                <input type="hidden" name="grade_label" value="{{ grade.grade_label }}">
+                <input type="hidden" name="next" value="/catalogs/grades/detail?source=derived&school_code={{ grade.school_code or '' }}&academic_year={{ grade.academic_year or '' }}&grade_label={{ grade.grade_label }}">
+                <button type="submit" class="table-action-link danger">Eliminar</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="3">No hay grados derivados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-  </article>
-
-  <article class="card">
-    <div class="section-heading">
-      <h2>Catálogo manual complementario</h2>
-      <span class="muted">{{ manual_grades|length }} registro(s)</span>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Escuela</th>
-          <th>Año</th>
-          <th>Grado</th>
-          <th>Nombre</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for grade in manual_grades %}
-        <tr>
-          <td>{{ grade.school_code or "-" }}</td>
-          <td>{{ grade.academic_year or "-" }}</td>
-          <td>{{ grade.grade_label }}</td>
-          <td>{{ grade.display_name or "-" }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4">No hay grados manuales.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    {% if current_user.role_code in ["admin", "principal", "administrative"] %}
-    <form action="/catalogs/grades" method="post" class="form-panel">
-      <div class="form-header">
-        <h3>Registrar grado manual</h3>
-        <p>Usa este formulario cuando necesites complementar la vista derivada con un grado controlado manualmente.</p>
-      </div>
-      <div class="form-grid">
-        <label><span>Escuela</span><input type="text" name="school_code"><small>Déjalo vacío si el grado aplica de forma general.</small></label>
-        <label><span>Año académico</span><input type="number" name="academic_year"></label>
-        <label><span>Grado</span><input type="text" name="grade_label" required></label>
-        <label><span>Nombre de despliegue</span><input type="text" name="display_name"><small>Nombre más legible para pantallas y documentos.</small></label>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="button">Guardar grado</button>
-      </div>
-    </form>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos grados con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Prueba con otra escuela o con una búsqueda más amplia por grado o año académico.</p>
+    {% elif compatibility_mode %}
+    <p>La vista derivada quedó activa, pero en esta base local todavía no existe el catálogo manual complementario.</p>
+    {% else %}
+    <p>No hay grados visibles para tu sesión en este momento.</p>
     {% endif %}
-  </article>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

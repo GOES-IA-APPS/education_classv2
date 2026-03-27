@@ -3,18 +3,95 @@
 {% block heading %}Ficha estudiantil{% endblock %}
 {% block subheading %}Consulta identidad del alumno, matrícula visible y vínculos familiares preservando la clave natural del expediente heredado.{% endblock %}
 {% block content %}
-<section class="page-hero compact">
-  <div>
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
+<section class="page-hero compact student-hero">
+  <div class="student-hero-copy">
     <p class="eyebrow">Alumno</p>
     <h2>{{ student.full_name or "Alumno sin nombre registrado" }}</h2>
     <p>La identidad académica del expediente permanece anclada a <code>students.nie</code> y se usa como vínculo seguro con usuarios, matrículas y tutores.</p>
   </div>
-  <div class="inline-meta">
-    <span class="badge">{{ student.nie }}</span>
-    <span class="badge">{{ student.gender or "Género no indicado" }}</span>
-    <span class="badge">{{ student.age_current or "Edad no indicada" }}</span>
+  <div class="student-hero-side">
+    <div class="page-actions">
+      <a href="{{ return_to }}" class="button secondary">Volver al listado</a>
+      {% if can_manage_students %}
+      <a href="/students/{{ student.nie }}?mode=edit" class="button secondary">Editar</a>
+      <form action="/students/{{ student.nie }}/delete" method="post" class="inline-form" data-delete-form>
+        <input type="hidden" name="delete_confirmation" value="">
+        <input type="hidden" name="next" value="/students/{{ student.nie }}">
+        <button type="submit" class="button danger">Eliminar</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="inline-meta">
+      <span class="badge">{{ student.nie }}</span>
+      <span class="badge">{{ student.gender or "Género no indicado" }}</span>
+      <span class="badge">{{ student.age_current or "Edad no indicada" }}</span>
+    </div>
   </div>
 </section>
+
+{% if error %}
+<div class="alert error">{{ error }}</div>
+{% endif %}
+
+{% if edit_mode %}
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Editar alumno</h2>
+      <p class="muted">Actualiza la ficha principal del estudiante sin alterar su clave natural <code>NIE</code>.</p>
+    </div>
+  </div>
+  <form action="/students/{{ student.nie }}" method="post" class="form-panel">
+    <div class="form-section">
+      <div class="form-section-heading">
+        <strong>Identificación</strong>
+        <p>Corrige nombres, fecha de nacimiento, género y edad visible en el expediente.</p>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span>NIE</span>
+          <input type="text" value="{{ student.nie }}" readonly>
+          <small>Identificador principal del alumno en la base heredada.</small>
+        </label>
+        <label>
+          <span>Género</span>
+          <input type="text" name="gender" value="{{ student.gender or '' }}">
+        </label>
+        <label><span>Primer nombre</span><input type="text" name="first_name1" value="{{ student.first_name1 or '' }}"></label>
+        <label><span>Segundo nombre</span><input type="text" name="first_name2" value="{{ student.first_name2 or '' }}"></label>
+        <label><span>Tercer nombre</span><input type="text" name="first_name3" value="{{ student.first_name3 or '' }}"></label>
+        <label><span>Primer apellido</span><input type="text" name="last_name1" value="{{ student.last_name1 or '' }}"></label>
+        <label><span>Segundo apellido</span><input type="text" name="last_name2" value="{{ student.last_name2 or '' }}"></label>
+        <label><span>Tercer apellido</span><input type="text" name="last_name3" value="{{ student.last_name3 or '' }}"></label>
+        <label><span>Fecha de nacimiento</span><input type="date" name="birth_date" value="{{ student.birth_date.isoformat() if student.birth_date else '' }}"></label>
+        <label><span>Edad actual</span><input type="number" name="age_current" value="{{ student.age_current if student.age_current is not none else '' }}"></label>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-heading">
+        <strong>Referencia familiar</strong>
+        <p>Conserva información útil para operación institucional y seguimiento administrativo.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Nombre del padre</span><input type="text" name="father_full_name" value="{{ student.father_full_name or '' }}"></label>
+        <label><span>Nombre de la madre</span><input type="text" name="mother_full_name" value="{{ student.mother_full_name or '' }}"></label>
+        <label class="field-span-2">
+          <span>Dirección</span>
+          <textarea name="address_full">{{ student.address_full or '' }}</textarea>
+          <small>Dirección registrada para referencia y contacto institucional.</small>
+        </label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button">Guardar cambios</button>
+      <a href="/students/{{ student.nie }}" class="button secondary">Cancelar edición</a>
+    </div>
+  </form>
+</section>
+{% endif %}
 
 <section class="grid two">
   <article class="card">
@@ -91,10 +168,10 @@
     <div class="section-heading">
       <div>
         <h2>Tutores vinculados</h2>
-        <p class="muted">{{ student.student_tutor_links|length }} vínculo(s) registrados.</p>
+        <p class="muted">{{ student.visible_tutor_count or 0 }} vínculo(s) registrados.</p>
       </div>
     </div>
-    {% if student.student_tutor_links %}
+    {% if student.visible_tutor_links %}
     <div class="table-shell">
       <table class="table">
         <thead>
@@ -105,7 +182,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for link in student.student_tutor_links %}
+          {% for link in student.visible_tutor_links %}
           <tr>
             <td><a href="/tutors/{{ link.student_tutor.id }}">{{ link.student_tutor.full_name }}</a></td>
             <td>{{ link.relationship_label or "No indicada" }}</td>
@@ -118,7 +195,7 @@
     {% else %}
     <div class="empty-state">
       <h3>No hay tutores vinculados</h3>
-      <p>El módulo de tutores puede complementar esta ficha cuando exista vinculación familiar registrada.</p>
+      <p>Esta ficha no tiene vínculos de tutores visibles en el entorno actual o todavía no se han registrado relaciones familiares complementarias.</p>
     </div>
     {% endif %}
   </article>

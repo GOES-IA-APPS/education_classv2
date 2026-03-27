@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import GradeRecord, StudentEnrollment, SubjectCatalog, TeacherAssignment, User
@@ -14,7 +14,9 @@ from app.repositories.grade_records import (
     update_grade_record,
 )
 from app.schemas.phase3 import GradeRecordCreate, GradeRecordUpdate
+from app.services.pagination_service import paginate_entities
 from app.services.access_service import visible_assignments_stmt, visible_grade_records_stmt
+from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
 
 
 def _validate_note_values(score: float | None, weight: float | None) -> None:
@@ -34,6 +36,21 @@ def _grade_matches(assignment: TeacherAssignment, grade_label: str | None) -> bo
     if not grade_label or not assignment.grade_label:
         return True
     return assignment.grade_label == grade_label
+
+
+def _grade_record_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(GradeRecord.student_nie, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.teacher_id_persona, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.subject_name, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.subject_code, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.evaluation_type, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.evaluation_name, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.grade_label, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.section_code, "")).like(query),
+        func.lower(func.coalesce(GradeRecord.section_id, "")).like(query),
+    )
 
 
 def _resolve_subject_snapshot(db: Session, payload: GradeRecordCreate | GradeRecordUpdate) -> tuple[int | None, str | None, str | None]:
@@ -110,6 +127,52 @@ def search_grade_records(
     if subject_name:
         stmt = stmt.where(GradeRecord.subject_name.ilike(f"%{subject_name}%"))
     return list_grade_records(db, stmt)
+
+
+def search_grade_records_page(
+    db: Session,
+    current_user: User,
+    *,
+    school_code: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
+) -> PaginationResult[GradeRecord]:
+    base_stmt = visible_grade_records_stmt(db, current_user)
+    if school_code:
+        base_stmt = base_stmt.where(GradeRecord.school_code == school_code)
+    if q:
+        base_stmt = base_stmt.where(_grade_record_search_clause(q))
+    fetch_stmt = base_stmt.options(*GRADE_RECORD_LIST_OPTIONS)
+    return paginate_entities(
+        db,
+        base_stmt=base_stmt,
+        fetch_stmt=fetch_stmt,
+        id_column=GradeRecord.id,
+        order_by=(
+            GradeRecord.academic_year.desc(),
+            GradeRecord.school_code,
+            GradeRecord.grade_label,
+            GradeRecord.section_code,
+            GradeRecord.subject_name,
+            GradeRecord.student_nie,
+            GradeRecord.id,
+        ),
+        page=page,
+        per_page=per_page,
+        cache_namespace="grades",
+        cache_scope={
+            "user_id": current_user.id,
+            "role_code": current_user.role_code,
+            "school_code": current_user.school_code,
+            "teacher_id_persona": current_user.teacher_id_persona,
+            "student_nie": current_user.student_nie,
+            "filters": {
+                "school_code": school_code,
+                "q": q,
+            },
+        },
+    )
 
 
 def get_grade_record_detail(db: Session, current_user: User, grade_record_id: int) -> GradeRecord | None:

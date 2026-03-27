@@ -3,14 +3,17 @@ from __future__ import annotations
 from collections import defaultdict
 from statistics import fmean
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import GradeRecord, ReportCard, StudentEnrollment, TeacherAssignment, User
+from app.models import GradeRecord, ReportCard, ReportCardItem, Student, StudentEnrollment, TeacherAssignment, User
 from app.repositories.report_cards import (
-    REPORT_CARD_LIST_OPTIONS,
     get_existing_report_card,
     list_report_cards,
+    report_card_items_table_available,
+    report_card_list_options,
+    report_cards_table_available,
     replace_report_card_items,
 )
 from app.schemas.phase3 import ReportCardIssueCreate
@@ -20,6 +23,40 @@ from app.services.access_service import (
     visible_grade_records_stmt,
     visible_report_cards_stmt,
 )
+from app.services.pagination_service import paginate_entities
+from app.utils.cache import invalidate_namespace
+from app.utils.pagination import DEFAULT_PER_PAGE, PaginationResult
+
+
+def _attach_report_card_view_metadata(db: Session, report_cards: list[ReportCard]) -> list[ReportCard]:
+    items_available = report_card_items_table_available(db)
+    for report_card in report_cards:
+        visible_items = list(report_card.items) if items_available else []
+        setattr(report_card, "visible_items", visible_items)
+        setattr(report_card, "visible_item_count", len(visible_items))
+        setattr(report_card, "items_available", items_available)
+    return report_cards
+
+
+def _report_card_search_clause(q: str):
+    query = f"%{q.strip().lower()}%"
+    return or_(
+        func.lower(func.coalesce(ReportCard.school_code, "")).like(query),
+        func.lower(func.coalesce(ReportCard.student_nie, "")).like(query),
+        func.lower(func.coalesce(ReportCard.grade_label, "")).like(query),
+        func.lower(func.coalesce(ReportCard.section_code, "")).like(query),
+        func.lower(func.coalesce(ReportCard.status, "")).like(query),
+        ReportCard.student.has(
+            or_(
+                func.lower(func.coalesce(Student.first_name1, "")).like(query),
+                func.lower(func.coalesce(Student.first_name2, "")).like(query),
+                func.lower(func.coalesce(Student.first_name3, "")).like(query),
+                func.lower(func.coalesce(Student.last_name1, "")).like(query),
+                func.lower(func.coalesce(Student.last_name2, "")).like(query),
+                func.lower(func.coalesce(Student.last_name3, "")).like(query),
+            )
+        ),
+    )
 
 
 def _final_score_from_rows(rows: list[GradeRecord]) -> float:
@@ -47,8 +84,12 @@ def search_report_cards(
     grade_label: str | None = None,
     section_code: str | None = None,
     student_nie: str | None = None,
+    q: str | None = None,
 ) -> list[ReportCard]:
-    stmt = visible_report_cards_stmt(db, current_user).options(*REPORT_CARD_LIST_OPTIONS)
+    if not report_cards_table_available(db):
+        raise RuntimeError("REPORT_CARDS_SCHEMA_UNAVAILABLE")
+
+    stmt = visible_report_cards_stmt(db, current_user).options(*report_card_list_options(db))
     if school_code:
         stmt = stmt.where(ReportCard.school_code == school_code)
     if academic_year:
@@ -59,18 +100,73 @@ def search_report_cards(
         stmt = stmt.where(ReportCard.section_code == section_code)
     if student_nie:
         stmt = stmt.where(ReportCard.student_nie == student_nie)
-    return list_report_cards(db, stmt)
+    if q:
+        stmt = stmt.where(_report_card_search_clause(q))
+    return _attach_report_card_view_metadata(db, list_report_cards(db, stmt))
+
+
+def search_report_cards_page(
+    db: Session,
+    current_user: User,
+    *,
+    school_code: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
+) -> PaginationResult[ReportCard]:
+    if not report_cards_table_available(db):
+        raise RuntimeError("REPORT_CARDS_SCHEMA_UNAVAILABLE")
+
+    base_stmt = visible_report_cards_stmt(db, current_user)
+    if school_code:
+        base_stmt = base_stmt.where(ReportCard.school_code == school_code)
+    if q:
+        base_stmt = base_stmt.where(_report_card_search_clause(q))
+
+    fetch_stmt = base_stmt.options(*report_card_list_options(db))
+    pagination = paginate_entities(
+        db,
+        base_stmt=base_stmt,
+        fetch_stmt=fetch_stmt,
+        id_column=ReportCard.id,
+        order_by=(ReportCard.issued_at.desc(), ReportCard.academic_year.desc(), ReportCard.school_code, ReportCard.student_nie),
+        page=page,
+        per_page=per_page,
+        cache_namespace="report_cards",
+        cache_scope={
+            "user_id": current_user.id,
+            "role_code": current_user.role_code,
+            "school_code": current_user.school_code,
+            "teacher_id_persona": current_user.teacher_id_persona,
+            "student_nie": current_user.student_nie,
+            "filters": {
+                "school_code": school_code,
+                "q": q,
+            },
+        },
+    )
+    pagination.items = _attach_report_card_view_metadata(db, pagination.items)
+    return pagination
 
 
 def get_report_card_detail(db: Session, current_user: User, report_card_id: int) -> ReportCard | None:
-    return db.scalar(
+    if not report_cards_table_available(db):
+        raise RuntimeError("REPORT_CARDS_SCHEMA_UNAVAILABLE")
+
+    report_card = db.scalar(
         visible_report_cards_stmt(db, current_user)
-        .options(*REPORT_CARD_LIST_OPTIONS)
+        .options(*report_card_list_options(db))
         .where(ReportCard.id == report_card_id)
     )
+    if report_card:
+        _attach_report_card_view_metadata(db, [report_card])
+    return report_card
 
 
 def issue_report_card(db: Session, payload: ReportCardIssueCreate, current_user: User) -> ReportCard:
+    if not report_cards_table_available(db):
+        raise ValueError("La estructura local de boletas no está disponible todavía en esta base.")
+
     enrollment_stmt = visible_enrollments_stmt(db, current_user).where(
         StudentEnrollment.nie == payload.student_nie,
         StudentEnrollment.school_code == payload.school_code,
@@ -170,4 +266,48 @@ def issue_report_card(db: Session, payload: ReportCardIssueCreate, current_user:
     replace_report_card_items(db, existing, items)
     db.commit()
     db.refresh(existing)
+    invalidate_namespace("report_cards")
     return existing
+
+
+def update_report_card_entry(
+    db: Session,
+    current_user: User,
+    report_card_id: int,
+    *,
+    responsible_teacher_id_persona: str | None = None,
+    responsible_director_id_persona: str | None = None,
+    observations: str | None = None,
+    status: str | None = None,
+) -> ReportCard:
+    report_card = get_report_card_detail(db, current_user, report_card_id)
+    if not report_card:
+        raise ValueError("Boleta no encontrada.")
+
+    report_card.responsible_teacher_id_persona = responsible_teacher_id_persona
+    report_card.responsible_director_id_persona = responsible_director_id_persona
+    report_card.observations = observations
+    if status:
+        report_card.status = status
+
+    db.commit()
+    db.refresh(report_card)
+    invalidate_namespace("report_cards")
+    _attach_report_card_view_metadata(db, [report_card])
+    return report_card
+
+
+def delete_report_card_entry(db: Session, current_user: User, report_card_id: int) -> None:
+    report_card = get_report_card_detail(db, current_user, report_card_id)
+    if not report_card:
+        raise ValueError("Boleta no encontrada.")
+
+    try:
+        if report_card_items_table_available(db):
+            db.execute(delete(ReportCardItem).where(ReportCardItem.report_card_id == report_card.id))
+        db.execute(delete(ReportCard).where(ReportCard.id == report_card.id))
+        db.commit()
+        invalidate_namespace("report_cards")
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise ValueError("No se pudo eliminar la boleta por integridad referencial o dependencias activas.") from exc

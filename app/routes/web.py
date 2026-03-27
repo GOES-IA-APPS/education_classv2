@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -37,12 +38,16 @@ from app.services.catalog_service import (
     create_grade_catalog_record,
     create_modality_catalog_record,
     create_section_catalog_record,
+    delete_grade_catalog_record,
     derive_grade_catalog_view,
     derive_modality_catalog_view,
     derive_section_catalog_view,
+    get_grade_catalog_entry,
     list_manual_grade_catalogs,
     list_manual_modality_catalogs,
     list_manual_section_catalogs,
+    search_grade_catalog_entries,
+    update_grade_catalog_record,
 )
 from app.services.dashboard_service import dashboard_breakdown, dashboard_stats
 from app.services.enrollment_service import (
@@ -59,9 +64,11 @@ from app.services.school_service import (
 )
 from app.services.student_service import (
     create_student_record,
+    delete_student_record,
     get_student_detail,
     search_students,
     search_students_page,
+    update_student_record,
 )
 from app.services.teacher_service import (
     create_teacher_record,
@@ -134,6 +141,31 @@ def parse_optional_int(value: Optional[str], label: str) -> Optional[int]:
 
 def parse_checkbox(value: Optional[str]) -> bool:
     return (value or "").strip().lower() in {"1", "on", "true", "yes", "si"}
+
+
+def build_url(path: str, **params: Optional[str]) -> str:
+    clean_params = {key: value for key, value in params.items() if value not in (None, "")}
+    if not clean_params:
+        return path
+    return f"{path}?{urlencode(clean_params)}"
+
+
+def sanitize_students_return_to(value: Optional[str], *, fallback: str = "/students") -> str:
+    normalized = clean_optional(value)
+    if normalized and normalized.startswith("/students"):
+        return normalized
+    return fallback
+
+
+def sanitize_catalog_grades_return_to(
+    value: Optional[str],
+    *,
+    fallback: str = "/catalogs/grades",
+) -> str:
+    normalized = clean_optional(value)
+    if normalized and normalized.startswith("/catalogs/grades"):
+        return normalized
+    return fallback
 
 
 def available_role_codes_for(current_user: User) -> list[str]:
@@ -467,6 +499,8 @@ def students_page(
     school_code: Optional[str] = None,
     q: Optional[str] = None,
     page: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
     current_user: User = Depends(require_roles(*STUDENT_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
@@ -474,25 +508,31 @@ def students_page(
         "school_code": clean_optional(school_code),
         "q": clean_optional(q),
     }
-    pagination = search_students_page(
-        db,
-        current_user,
-        page=sanitize_page(page),
-        per_page=DEFAULT_PER_PAGE,
-        **filters,
-    )
-    return render(
-        request,
-        "students/list.html",
-        {
-            "students": pagination.items,
-            "pagination": pagination,
-            "schools": visible_schools(db, current_user),
-            "filters": filters,
-            "error": None,
-        },
-        current_user=current_user,
-    )
+    try:
+        pagination = search_students_page(
+            db,
+            current_user,
+            page=sanitize_page(page),
+            per_page=DEFAULT_PER_PAGE,
+            **filters,
+        )
+        return render(
+            request,
+            "students/list.html",
+            {
+                "students": pagination.items,
+                "pagination": pagination,
+                "schools": visible_schools(db, current_user),
+                "filters": filters,
+                "error": None,
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+            },
+            current_user=current_user,
+        )
+    except Exception as e:
+        print("ERROR STUDENTS:", e)
+        raise
 
 
 @router.post("/students", response_class=HTMLResponse)
@@ -556,21 +596,144 @@ def create_student_action(
     return redirect("/students")
 
 
+@router.post("/students/{nie}", response_class=HTMLResponse)
+def update_student_action(
+    request: Request,
+    nie: str,
+    gender: str = Form(""),
+    first_name1: str = Form(""),
+    first_name2: str = Form(""),
+    first_name3: str = Form(""),
+    last_name1: str = Form(""),
+    last_name2: str = Form(""),
+    last_name3: str = Form(""),
+    birth_date: str = Form(""),
+    age_current: str = Form(""),
+    father_full_name: str = Form(""),
+    mother_full_name: str = Form(""),
+    address_full: str = Form(""),
+    current_user: User = Depends(require_roles(*ACADEMIC_MANAGER_ROLES)),
+    db: Session = Depends(get_db),
+):
+    current_student = get_student_detail(db, current_user, nie)
+    if not current_student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado.")
+    try:
+        update_student_record(
+            db,
+            nie,
+            StudentCreate(
+                nie=nie,
+                gender=clean_optional(gender),
+                first_name1=clean_optional(first_name1),
+                first_name2=clean_optional(first_name2),
+                first_name3=clean_optional(first_name3),
+                last_name1=clean_optional(last_name1),
+                last_name2=clean_optional(last_name2),
+                last_name3=clean_optional(last_name3),
+                birth_date=clean_optional(birth_date),
+                age_current=parse_optional_int(age_current, "Edad actual"),
+                father_full_name=clean_optional(father_full_name),
+                mother_full_name=clean_optional(mother_full_name),
+                address_full=clean_optional(address_full),
+            ),
+        )
+    except ValueError as exc:
+        return render(
+            request,
+            "students/detail.html",
+            {
+                "student": current_student,
+                "error": str(exc),
+                "edit_mode": True,
+                "can_manage_students": current_user.role_code in ACADEMIC_MANAGER_ROLES,
+                "return_to": "/students",
+                "flash_type": None,
+                "flash_message": None,
+            },
+            current_user=current_user,
+            status_code=400,
+        )
+
+    return redirect(
+        build_url(
+            f"/students/{nie}",
+            flash_type="success",
+            flash_message="Alumno actualizado correctamente.",
+        )
+    )
+
+
 @router.get("/students/{nie}", response_class=HTMLResponse)
 def student_detail_page(
     request: Request,
     nie: str,
+    mode: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
     current_user: User = Depends(require_roles(*STUDENT_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
-    student = get_student_detail(db, current_user, nie)
-    if not student:
-        raise HTTPException(status_code=404, detail="Alumno no encontrado.")
-    return render(
-        request,
-        "students/detail.html",
-        {"student": student},
-        current_user=current_user,
+    try:
+        student = get_student_detail(db, current_user, nie)
+        if not student:
+            raise HTTPException(status_code=404, detail="Alumno no encontrado.")
+        return render(
+            request,
+            "students/detail.html",
+            {
+                "student": student,
+                "error": None,
+                "edit_mode": mode == "edit" and current_user.role_code in ACADEMIC_MANAGER_ROLES,
+                "can_manage_students": current_user.role_code in ACADEMIC_MANAGER_ROLES,
+                "return_to": "/students",
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+            },
+            current_user=current_user,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ERROR STUDENT DETAIL:", e)
+        raise
+
+
+@router.post("/students/{nie}/delete")
+def delete_student_action(
+    nie: str,
+    delete_confirmation: str = Form(""),
+    next: str = Form("/students"),
+    current_user: User = Depends(require_roles(*ACADEMIC_MANAGER_ROLES)),
+    db: Session = Depends(get_db),
+):
+    return_to = sanitize_students_return_to(next, fallback=f"/students/{nie}")
+    if delete_confirmation != "DELETE":
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="warning",
+                flash_message="Debes escribir DELETE para confirmar la eliminación.",
+            )
+        )
+
+    try:
+        delete_student_record(db, current_user, nie)
+    except ValueError as exc:
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="error",
+                flash_message=str(exc),
+            )
+        )
+
+    return redirect(
+        build_url(
+            "/students",
+            flash_type="success",
+            flash_message="Eliminado con éxito.",
+        )
     )
 
 
@@ -817,26 +980,32 @@ def enrollment_detail_page(
 def grade_catalog_page(
     request: Request,
     school_code: Optional[str] = None,
-    academic_year: Optional[str] = None,
+    q: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
     current_user: User = Depends(require_roles(*CATALOG_VIEW_ROLES)),
     db: Session = Depends(get_db),
 ):
-    filters = {
-        "school_code": clean_optional(school_code),
-        "academic_year": parse_optional_int(academic_year, "Año académico"),
-    }
-    return render(
-        request,
-        "catalogs/grades.html",
-        {
-            "derived_grades": derive_grade_catalog_view(db, current_user, **filters),
-            "manual_grades": list_manual_grade_catalogs(db, current_user),
-            "schools": visible_schools(db, current_user),
-            "filters": filters,
-            "error": None,
-        },
-        current_user=current_user,
-    )
+    filters = {"school_code": clean_optional(school_code), "q": clean_optional(q)}
+    try:
+        grade_rows, compatibility_mode = search_grade_catalog_entries(db, current_user, **filters)
+        return render(
+            request,
+            "catalogs/grades.html",
+            {
+                "grade_rows": grade_rows,
+                "schools": visible_schools(db, current_user),
+                "filters": filters,
+                "error": None,
+                "compatibility_mode": compatibility_mode,
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+            },
+            current_user=current_user,
+        )
+    except Exception as e:
+        print("ERROR GRADES:", e)
+        raise
 
 
 @router.post("/catalogs/grades", response_class=HTMLResponse)
@@ -860,20 +1029,215 @@ def create_grade_catalog_action(
             ),
         )
     except ValueError as exc:
+        grade_rows, compatibility_mode = search_grade_catalog_entries(db, current_user)
         return render(
             request,
             "catalogs/grades.html",
             {
-                "derived_grades": derive_grade_catalog_view(db, current_user),
-                "manual_grades": list_manual_grade_catalogs(db, current_user),
+                "grade_rows": grade_rows,
                 "schools": visible_schools(db, current_user),
                 "filters": {},
                 "error": str(exc),
+                "compatibility_mode": compatibility_mode,
+                "flash_type": None,
+                "flash_message": None,
             },
             current_user=current_user,
             status_code=400,
         )
     return redirect("/catalogs/grades")
+
+
+@router.get("/catalogs/grades/detail", response_class=HTMLResponse)
+def grade_catalog_detail_page(
+    request: Request,
+    source: str = "derived",
+    grade_id: Optional[str] = None,
+    school_code: Optional[str] = None,
+    academic_year: Optional[str] = None,
+    grade_label: Optional[str] = None,
+    mode: Optional[str] = None,
+    flash_type: Optional[str] = None,
+    flash_message: Optional[str] = None,
+    current_user: User = Depends(require_roles(*CATALOG_VIEW_ROLES)),
+    db: Session = Depends(get_db),
+):
+    try:
+        parsed_grade_id = parse_optional_int(grade_id, "ID del grado") if grade_id is not None else None
+        parsed_year = parse_optional_int(academic_year, "Año académico")
+        grade_entry = get_grade_catalog_entry(
+            db,
+            current_user,
+            source_type=source,
+            grade_id=parsed_grade_id,
+            school_code=clean_optional(school_code),
+            academic_year=parsed_year,
+            grade_label=clean_optional(grade_label),
+        )
+        if not grade_entry:
+            raise HTTPException(status_code=404, detail="Grado no encontrado.")
+        related_sections = derive_section_catalog_view(
+            db,
+            current_user,
+            school_code=grade_entry["school_code"],
+            academic_year=grade_entry["academic_year"],
+            grade_label=grade_entry["grade_label"],
+        )
+        return_to = build_url("/catalogs/grades", school_code=grade_entry["school_code"])
+        return render(
+            request,
+            "catalogs/grade_detail.html",
+            {
+                "grade_entry": grade_entry,
+                "related_sections": related_sections,
+                "error": None,
+                "edit_mode": mode == "edit" and current_user.role_code in ACADEMIC_MANAGER_ROLES,
+                "can_manage_grades": current_user.role_code in ACADEMIC_MANAGER_ROLES,
+                "return_to": return_to,
+                "flash_type": clean_optional(flash_type),
+                "flash_message": clean_optional(flash_message),
+            },
+            current_user=current_user,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ERROR GRADES:", e)
+        raise
+
+
+@router.post("/catalogs/grades/{grade_id}/edit", response_class=HTMLResponse)
+def update_grade_catalog_action(
+    request: Request,
+    grade_id: int,
+    school_code: str = Form(""),
+    academic_year: str = Form(""),
+    grade_label: str = Form(...),
+    display_name: str = Form(""),
+    current_user: User = Depends(require_roles(*ACADEMIC_MANAGER_ROLES)),
+    db: Session = Depends(get_db),
+):
+    grade_entry = get_grade_catalog_entry(db, current_user, source_type="manual", grade_id=grade_id)
+    if not grade_entry:
+        raise HTTPException(status_code=404, detail="Grado manual no encontrado.")
+
+    try:
+        update_grade_catalog_record(
+            db,
+            current_user,
+            grade_id,
+            GradeCatalogCreate(
+                school_code=clean_optional(school_code),
+                academic_year=parse_optional_int(academic_year, "Año académico"),
+                grade_label=grade_label.strip(),
+                display_name=clean_optional(display_name),
+            ),
+        )
+    except ValueError as exc:
+        return render(
+            request,
+            "catalogs/grade_detail.html",
+            {
+                "grade_entry": grade_entry,
+                "related_sections": derive_section_catalog_view(
+                    db,
+                    current_user,
+                    school_code=grade_entry["school_code"],
+                    academic_year=grade_entry["academic_year"],
+                    grade_label=grade_entry["grade_label"],
+                ),
+                "error": str(exc),
+                "edit_mode": True,
+                "can_manage_grades": True,
+                "return_to": build_url("/catalogs/grades", school_code=grade_entry["school_code"]),
+                "flash_type": None,
+                "flash_message": None,
+            },
+            current_user=current_user,
+            status_code=400,
+        )
+
+    return redirect(
+        build_url(
+            "/catalogs/grades/detail",
+            source="manual",
+            grade_id=str(grade_id),
+            flash_type="success",
+            flash_message="Grado actualizado correctamente.",
+        )
+    )
+
+
+@router.post("/catalogs/grades/{grade_id}/delete")
+def delete_grade_catalog_action(
+    grade_id: int,
+    delete_confirmation: str = Form(""),
+    next: str = Form("/catalogs/grades"),
+    current_user: User = Depends(require_roles(*ACADEMIC_MANAGER_ROLES)),
+    db: Session = Depends(get_db),
+):
+    return_to = sanitize_catalog_grades_return_to(next, fallback="/catalogs/grades")
+    if delete_confirmation != "DELETE":
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="warning",
+                flash_message="Debes escribir DELETE para confirmar la eliminación.",
+            )
+        )
+    try:
+        delete_grade_catalog_record(db, current_user, grade_id)
+    except ValueError as exc:
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="error",
+                flash_message=str(exc),
+            )
+        )
+    return redirect(
+        build_url(
+            "/catalogs/grades",
+            flash_type="success",
+            flash_message="Eliminado con éxito.",
+        )
+    )
+
+
+@router.post("/catalogs/grades/delete-derived")
+def delete_derived_grade_catalog_action(
+    school_code: str = Form(""),
+    academic_year: str = Form(""),
+    grade_label: str = Form(""),
+    delete_confirmation: str = Form(""),
+    next: str = Form("/catalogs/grades"),
+    current_user: User = Depends(require_roles(*ACADEMIC_MANAGER_ROLES)),
+):
+    return_to = sanitize_catalog_grades_return_to(
+        next,
+        fallback=build_url(
+            "/catalogs/grades/detail",
+            source="derived",
+            school_code=clean_optional(school_code),
+            academic_year=clean_optional(academic_year),
+            grade_label=clean_optional(grade_label),
+        ),
+    )
+    if delete_confirmation != "DELETE":
+        return redirect(
+            build_url(
+                return_to,
+                flash_type="warning",
+                flash_message="Debes escribir DELETE para confirmar la eliminación.",
+            )
+        )
+    return redirect(
+        build_url(
+            return_to,
+            flash_type="error",
+            flash_message="No se puede eliminar un grado derivado desde datos reales.",
+        )
+    )
 
 
 @router.get("/catalogs/sections", response_class=HTMLResponse)

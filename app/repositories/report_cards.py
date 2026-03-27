@@ -1,26 +1,44 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import ReportCard, ReportCardItem, SubjectCatalog, Teacher
-
-REPORT_CARD_LIST_OPTIONS = (
-    joinedload(ReportCard.school),
-    joinedload(ReportCard.student),
-    joinedload(ReportCard.enrollment),
-    joinedload(ReportCard.responsible_teacher),
-    joinedload(ReportCard.responsible_director),
-    joinedload(ReportCard.items).joinedload(ReportCardItem.subject_catalog),
-)
+from app.models import ReportCard, ReportCardItem
 
 
-def report_card_list_stmt():
-    return select(ReportCard).options(*REPORT_CARD_LIST_OPTIONS)
+def report_card_tables(db: Session) -> set[str]:
+    inspector = inspect(db.get_bind())
+    return set(inspector.get_table_names())
+
+
+def report_cards_table_available(db: Session) -> bool:
+    return "report_cards" in report_card_tables(db)
+
+
+def report_card_items_table_available(db: Session) -> bool:
+    tables = report_card_tables(db)
+    return {"report_cards", "report_card_items"}.issubset(tables)
+
+
+def report_card_list_options(db: Session):
+    options = [
+        joinedload(ReportCard.school),
+        joinedload(ReportCard.student),
+        joinedload(ReportCard.enrollment),
+        joinedload(ReportCard.responsible_teacher),
+        joinedload(ReportCard.responsible_director),
+    ]
+    if report_card_items_table_available(db):
+        options.append(joinedload(ReportCard.items))
+    return tuple(options)
+
+
+def report_card_list_stmt(db: Session):
+    return select(ReportCard).options(*report_card_list_options(db))
 
 
 def get_report_card_by_id(db: Session, report_card_id: int) -> ReportCard | None:
-    return db.scalar(report_card_list_stmt().where(ReportCard.id == report_card_id))
+    return db.scalar(report_card_list_stmt(db).where(ReportCard.id == report_card_id))
 
 
 def list_report_cards(db: Session, stmt, limit: int = 200) -> list[ReportCard]:

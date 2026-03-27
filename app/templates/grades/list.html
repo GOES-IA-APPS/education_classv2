@@ -1,112 +1,172 @@
 {% extends "base.html" %}
 {% block title %}Notas | Sistema de Gestión Escolar{% endblock %}
-{% block heading %}Notas Académicas{% endblock %}
-{% block subheading %}Gestiona registros de evaluación con una estructura clara, consistente y alineada al modelo académico extendido del sistema.{% endblock %}
+{% block heading %}Notas{% endblock %}
+{% block subheading %}Filtra por escuela y usa una búsqueda general para ubicar rápidamente notas visibles por alumno, materia o referencia académica.{% endblock %}
 {% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Seguimiento académico</p>
+    <h2>Registro de notas</h2>
+    <p>Consulta evaluaciones visibles y navega al detalle de cada nota con una vista clara, estable y alineada al alcance institucional de tu sesión.</p>
+  </div>
+  {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
+  <details class="card utility-panel">
+    <summary class="summary-trigger">
+      <div>
+        <strong>Registrar nota</strong>
+        <small>Abre este panel solo cuando necesites agregar una evaluación nueva para mantener el listado principal limpio y enfocado.</small>
+      </div>
+    </summary>
+    <div class="details-body">
+      <form action="/grades" method="post" class="form-panel">
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Contexto académico</strong>
+            <p>Relaciona la nota con escuela, alumno, año y referencia docente disponible.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>Escuela</span><input type="text" name="school_code" required><small>Código institucional de la escuela.</small></label>
+            <label><span>NIE</span><input type="text" name="student_nie" required><small>Identificador del alumno evaluado.</small></label>
+            <label><span>Año académico</span><input type="number" name="academic_year" required></label>
+            <label><span>Grado</span><input type="text" name="grade_label"></label>
+            <label><span>Sección código</span><input type="text" name="section_code"></label>
+            <label><span>Sección ID</span><input type="text" name="section_id"></label>
+            <label><span>ID persona docente</span><input type="text" name="teacher_id_persona"></label>
+            <label><span>ID asignación docente</span><input type="number" name="teacher_assignment_id"></label>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-heading">
+            <strong>Materia y evaluación</strong>
+            <p>Documenta la materia, el instrumento aplicado y el resultado obtenido.</p>
+          </div>
+          <div class="form-grid">
+            <label><span>ID materia</span><input type="number" name="subject_catalog_id"></label>
+            <label><span>Código materia</span><input type="text" name="subject_code"></label>
+            <label class="field-span-2"><span>Nombre materia</span><input type="text" name="subject_name" required><small>Nombre visible en boletas, reportes y seguimiento académico.</small></label>
+            <label><span>Tipo de evaluación</span><input type="text" name="evaluation_type" placeholder="Parcial, proyecto, trimestre..."></label>
+            <label><span>Nombre de evaluación</span><input type="text" name="evaluation_name"></label>
+            <label><span>Peso</span><input type="number" step="0.01" name="weight"></label>
+            <label><span>Nota</span><input type="number" step="0.01" name="score"></label>
+            <label class="field-span-2"><span>Observaciones</span><textarea name="observations"></textarea><small>Agrega contexto solo cuando sea necesario para seguimiento.</small></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button">Guardar nota</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card">
   <div class="section-heading">
-    <h2>Filtros</h2>
+    <div>
+      <h2>Listado de notas</h2>
+      <p class="muted">{{ pagination.total }} registro(s) visibles para tu sesión.</p>
+    </div>
   </div>
-  <form method="get" action="/grades" class="filters-grid">
-    <label>Escuela
+
+  <form method="get" action="/grades" class="toolbar-filters">
+    <label>
+      Escuela
       <select name="school_code">
-        <option value="">Todas</option>
+        <option value="">Todas las escuelas</option>
         {% for school in schools %}
-        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>{{ school.code }} · {{ school.name }}</option>
+        <option value="{{ school.code }}" {% if filters.school_code == school.code %}selected{% endif %}>
+          {{ school.code }} · {{ school.name }}
+        </option>
         {% endfor %}
       </select>
     </label>
-    <label>Año<input type="text" name="academic_year" value="{{ filters.academic_year or '' }}"></label>
-    <label>Grado<input type="text" name="grade_label" value="{{ filters.grade_label or '' }}"></label>
-    <label>Sección<input type="text" name="section_code" value="{{ filters.section_code or '' }}"></label>
-    <label>NIE<input type="text" name="student_nie" value="{{ filters.student_nie or '' }}"></label>
-    <label>Docente<input type="text" name="teacher_id_persona" value="{{ filters.teacher_id_persona or '' }}"></label>
-    <label>Materia<input type="text" name="subject_name" value="{{ filters.subject_name or '' }}"></label>
-    <button type="submit" class="button">Filtrar</button>
-  </form>
-</section>
-
-<section class="grid two">
-  <article class="card">
-    <div class="section-heading">
-      <h2>Listado</h2>
-      <span class="muted">{{ grade_records|length }} registro(s)</span>
+    <label>
+      Búsqueda general
+      <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="NIE, materia, evaluación, grado, sección o docente">
+    </label>
+    <div class="toolbar-actions">
+      <button type="submit" class="button secondary">Filtrar</button>
+      {% if filters.school_code or filters.q %}
+      <a href="/grades" class="button secondary inline">Limpiar</a>
+      {% endif %}
     </div>
-    {% if error %}
-    <div class="alert error">{{ error }}</div>
+  </form>
+
+  <div class="filter-summary">
+    {% if filters.school_code %}
+    <span class="table-pill sand">Escuela seleccionada: {{ filters.school_code }}</span>
+    {% else %}
+    <span class="table-pill subtle">Cobertura de notas según tu rol</span>
     {% endif %}
-    <table class="table">
+    {% if filters.q %}
+    <span class="table-pill subtle">Búsqueda: {{ filters.q }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  {% if grade_records %}
+  <div class="table-shell">
+    <table class="table responsive-table">
       <thead>
         <tr>
-          <th>NIE</th>
-          <th>Materia</th>
-          <th>Evaluación</th>
-          <th>Peso</th>
-          <th>Nota</th>
-          <th>Docente</th>
+          <th>Alumno</th>
+          <th>Materia y evaluación</th>
+          <th>Resultado</th>
+          <th>Contexto</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for record in grade_records %}
         <tr>
-          <td><a href="/grades/{{ record.id }}">{{ record.student_nie }}</a></td>
-          <td><a href="/grades/{{ record.id }}">{{ record.subject_name }}</a></td>
-          <td>{{ record.evaluation_name or record.evaluation_type or "-" }}</td>
-          <td>{{ record.weight or "-" }}</td>
-          <td>{{ record.score or "-" }}</td>
-          <td>{{ record.teacher_id_persona or "-" }}</td>
+          <td data-label="Alumno">
+            <div class="table-cell-stack">
+              <a href="/grades/{{ record.id }}" class="table-primary-link">{{ record.student_nie }}</a>
+              <span class="table-meta">{{ record.student.full_name if record.student else "Alumno visible en el registro" }}</span>
+            </div>
+          </td>
+          <td data-label="Materia y evaluación">
+            <div class="table-cell-stack">
+              <strong>{{ record.subject_name }}</strong>
+              <span class="table-meta">{{ record.evaluation_name or record.evaluation_type or "Evaluación no detallada" }}</span>
+            </div>
+          </td>
+          <td data-label="Resultado">
+            <div class="table-badge-group">
+              <span class="table-pill subtle">Nota {{ record.score if record.score is not none else "-" }}</span>
+              <span class="table-pill subtle">Peso {{ record.weight if record.weight is not none else "-" }}</span>
+            </div>
+          </td>
+          <td data-label="Contexto">
+            <div class="table-cell-stack">
+              <strong>{{ record.school_code or "Escuela no disponible" }}</strong>
+              <span class="table-meta">
+                {{ record.academic_year or "-" }} · {{ record.grade_label or "Grado no indicado" }} · {{ record.section_code or record.section_id or "Sección no indicada" }}
+              </span>
+            </div>
+          </td>
+          <td data-label="Acciones" class="actions">
+            <a href="/grades/{{ record.id }}" class="table-action-link">Ver detalle</a>
+          </td>
         </tr>
-        {% else %}
-        <tr><td colspan="6">No hay notas disponibles para los filtros aplicados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-  </article>
-
-  {% if current_user.role_code in ["admin", "principal", "teacher", "administrative"] %}
-  <article class="card">
-    <div class="form-header">
-      <h2>Registrar nota</h2>
-      <p>Completa la referencia académica, la evaluación aplicada y el resultado obtenido por el estudiante.</p>
-    </div>
-    <form action="/grades" method="post" class="form-panel">
-      <div class="form-section">
-        <div class="form-section-heading">
-          <strong>Contexto académico</strong>
-          <p>Relaciona la nota con escuela, estudiante, año y estructura académica visible.</p>
-        </div>
-        <div class="form-grid">
-          <label><span>Escuela</span><input type="text" name="school_code" required><small>Código institucional de la escuela.</small></label>
-          <label><span>NIE</span><input type="text" name="student_nie" required><small>Identificador del alumno evaluado.</small></label>
-          <label><span>Año académico</span><input type="number" name="academic_year" required></label>
-          <label><span>Grado</span><input type="text" name="grade_label"></label>
-          <label><span>Sección código</span><input type="text" name="section_code"></label>
-          <label><span>Sección ID</span><input type="text" name="section_id"></label>
-          <label><span>ID persona docente</span><input type="text" name="teacher_id_persona"></label>
-          <label><span>ID asignación docente</span><input type="number" name="teacher_assignment_id"></label>
-        </div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-heading">
-          <strong>Materia y evaluación</strong>
-          <p>Documenta la materia, el tipo de instrumento y la ponderación aplicada.</p>
-        </div>
-        <div class="form-grid">
-          <label><span>ID materia</span><input type="number" name="subject_catalog_id"></label>
-          <label><span>Código materia</span><input type="text" name="subject_code"></label>
-          <label class="field-span-2"><span>Nombre materia</span><input type="text" name="subject_name" required><small>Nombre visible en boletas y reportes.</small></label>
-          <label><span>Tipo de evaluación</span><input type="text" name="evaluation_type" placeholder="Parcial, proyecto, trimestre..."></label>
-          <label><span>Nombre de evaluación</span><input type="text" name="evaluation_name"></label>
-          <label><span>Peso</span><input type="number" step="0.01" name="weight"></label>
-          <label><span>Nota</span><input type="number" step="0.01" name="score"></label>
-          <label class="field-span-2"><span>Observaciones</span><textarea name="observations"></textarea><small>Agrega contexto adicional solo si es relevante para seguimiento.</small></label>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="button">Guardar nota</button>
-      </div>
-    </form>
-  </article>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No encontramos notas con esos criterios</h3>
+    {% if filters.school_code or filters.q %}
+    <p>Ajusta la escuela seleccionada o usa una búsqueda más amplia para localizar evaluaciones visibles dentro de tu alcance.</p>
+    {% else %}
+    <p>No hay notas visibles por ahora. Si estás trabajando con una base local en transición, este módulo mostrará resultados cuando la estructura de notas esté sincronizada.</p>
+    {% endif %}
+  </div>
   {% endif %}
+
+  {% include "partials/pagination.html" %}
 </section>
 {% endblock %}

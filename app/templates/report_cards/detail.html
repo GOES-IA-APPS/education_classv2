@@ -1,7 +1,78 @@
 {% extends "base.html" %}
 {% block title %}Boleta {{ report_card.id }} | Sistema de Gestión Escolar{% endblock %}
 {% block heading %}Boleta {{ report_card.id }}{% endblock %}
+{% block subheading %}Consulta el documento académico emitido, sus responsables visibles y el detalle por materia preservando el vínculo con escuela, NIE y matrícula.{% endblock %}
 {% block content %}
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
+
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Boleta académica</p>
+    <h2>{{ report_card.student.full_name if report_card.student else report_card.student_nie }}</h2>
+    <p>Documento emitido para el año {{ report_card.academic_year }} con referencia a escuela, alumno, grado, sección y responsables académicos visibles en el sistema.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ return_to }}" class="button secondary">Volver al listado</a>
+    <a href="/report-cards/{{ report_card.id }}/print" class="button secondary">Ver boleta HTML</a>
+    {% if can_manage_report_cards %}
+    <a href="/report-cards/{{ report_card.id }}?mode=edit" class="button secondary">Editar</a>
+    <form action="/report-cards/{{ report_card.id }}/delete" method="post" class="inline-form" data-delete-form>
+      <input type="hidden" name="delete_confirmation" value="">
+      <input type="hidden" name="next" value="/report-cards/{{ report_card.id }}">
+      <button type="submit" class="button danger">Eliminar</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if error %}
+<div class="alert error">{{ error }}</div>
+{% endif %}
+
+{% if edit_mode %}
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Editar boleta</h2>
+      <p class="muted">Actualiza responsables, estado y observaciones sin alterar la referencia principal del documento.</p>
+    </div>
+  </div>
+  <form action="/report-cards/{{ report_card.id }}" method="post" class="form-panel">
+    <div class="form-section">
+      <div class="form-section-heading">
+        <strong>Referencia del documento</strong>
+        <p>La escuela, el alumno y el contexto académico se mantienen como referencia informativa.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" value="{{ report_card.school_code }}" readonly></label>
+        <label><span>NIE</span><input type="text" value="{{ report_card.student_nie }}" readonly></label>
+        <label><span>Año</span><input type="text" value="{{ report_card.academic_year }}" readonly></label>
+        <label><span>Grado</span><input type="text" value="{{ report_card.grade_label or '' }}" readonly></label>
+        <label><span>Sección</span><input type="text" value="{{ report_card.section_code or '' }}" readonly></label>
+        <label><span>Estado</span><input type="text" name="status" value="{{ report_card.status or 'issued' }}"></label>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-heading">
+        <strong>Responsables y observaciones</strong>
+        <p>Modifica la firma académica visible y la nota general del documento.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Docente responsable</span><input type="text" name="responsible_teacher_id_persona" value="{{ report_card.responsible_teacher_id_persona or '' }}"></label>
+        <label><span>Director responsable</span><input type="text" name="responsible_director_id_persona" value="{{ report_card.responsible_director_id_persona or '' }}"></label>
+        <label class="field-span-2"><span>Observaciones</span><textarea name="observations">{{ report_card.observations or '' }}</textarea></label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button">Guardar cambios</button>
+      <a href="/report-cards/{{ report_card.id }}" class="button secondary">Cancelar edición</a>
+    </div>
+  </form>
+</section>
+{% endif %}
+
 <section class="grid two">
   <article class="card">
     <h2>Resumen</h2>
@@ -13,45 +84,57 @@
       <div><strong>Grado</strong><span>{{ report_card.grade_label or "-" }}</span></div>
       <div><strong>Sección</strong><span>{{ report_card.section_code or "-" }}</span></div>
       <div><strong>Promedio</strong><span>{{ report_card.overall_average or "-" }}</span></div>
-      <div><strong>Emitida</strong><span>{{ report_card.issued_at.strftime("%Y-%m-%d") if report_card.issued_at else "-" }}</span></div>
+      <div><strong>Estado</strong><span>{{ report_card.status or "-" }}</span></div>
     </div>
-    <p class="muted">{{ report_card.observations or "Sin observaciones." }}</p>
+    <p class="muted">{{ report_card.observations or "Sin observaciones generales registradas." }}</p>
   </article>
 
   <article class="card">
-    <h2>Documento</h2>
-    <div class="stack">
-      <a class="button" href="/report-cards/{{ report_card.id }}/print">Ver boleta HTML</a>
+    <h2>Responsables</h2>
+    <div class="detail-grid">
+      <div><strong>Docente</strong><span>{{ report_card.responsible_teacher.full_name if report_card.responsible_teacher else report_card.responsible_teacher_id_persona or "-" }}</span></div>
+      <div><strong>Director</strong><span>{{ report_card.responsible_director.full_name if report_card.responsible_director else report_card.responsible_director_id_persona or "-" }}</span></div>
+      <div><strong>Fecha de emisión</strong><span>{{ report_card.issued_at.strftime("%Y-%m-%d") if report_card.issued_at else "-" }}</span></div>
+      <div><strong>Matrícula</strong><span>{{ report_card.enrollment_id or "-" }}</span></div>
     </div>
   </article>
 </section>
 
 <section class="card">
   <div class="section-heading">
-    <h2>Detalle por materia</h2>
-    <span class="muted">{{ report_card.items|length }} materia(s)</span>
+    <div>
+      <h2>Detalle por materia</h2>
+      <p class="muted">{{ report_card.visible_item_count or 0 }} materia(s) registradas.</p>
+    </div>
   </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Materia</th>
-        <th>Evaluaciones</th>
-        <th>Nota final</th>
-        <th>Observaciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in report_card.items %}
-      <tr>
-        <td>{{ item.subject_name }}</td>
-        <td>{{ item.evaluation_count }}</td>
-        <td>{{ item.final_score or "-" }}</td>
-        <td>{{ item.observations or "-" }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="4">No hay materias registradas.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% if report_card.visible_items %}
+  <div class="table-shell">
+    <table class="table responsive-table">
+      <thead>
+        <tr>
+          <th>Materia</th>
+          <th>Evaluaciones</th>
+          <th>Nota final</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in report_card.visible_items %}
+        <tr>
+          <td data-label="Materia">{{ item.subject_name }}</td>
+          <td data-label="Evaluaciones">{{ item.evaluation_count }}</td>
+          <td data-label="Nota final">{{ item.final_score or "-" }}</td>
+          <td data-label="Observaciones">{{ item.observations or "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay materias registradas</h3>
+    <p>Esta boleta no tiene detalle por materia visible en el entorno actual.</p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

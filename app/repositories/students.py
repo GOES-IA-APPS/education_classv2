@@ -1,19 +1,31 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Student, StudentEnrollment, StudentTutorStudentLink
 from app.schemas.academic import StudentCreate
 
-STUDENT_LIST_OPTIONS = (
-    joinedload(Student.student_enrollments).joinedload(StudentEnrollment.school),
-    joinedload(Student.student_tutor_links).joinedload(StudentTutorStudentLink.student_tutor),
-)
+
+def student_tutor_tables_available(db: Session) -> bool:
+    inspector = inspect(db.get_bind())
+    tables = set(inspector.get_table_names())
+    return {"student_tutor_student_links", "student_tutors"}.issubset(tables)
+
+
+def student_list_options(db: Session):
+    options = [
+        joinedload(Student.student_enrollments).joinedload(StudentEnrollment.school),
+    ]
+    if student_tutor_tables_available(db):
+        options.append(
+            joinedload(Student.student_tutor_links).joinedload(StudentTutorStudentLink.student_tutor)
+        )
+    return tuple(options)
 
 
 def student_list_stmt():
-    return select(Student).options(*STUDENT_LIST_OPTIONS)
+    return select(Student)
 
 
 def get_student_by_nie(db: Session, nie: str) -> Student | None:

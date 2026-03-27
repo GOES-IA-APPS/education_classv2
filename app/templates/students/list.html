@@ -3,6 +3,9 @@
 {% block heading %}Alumnos{% endblock %}
 {% block subheading %}Ubica estudiantes por escuela o mediante una búsqueda general de NIE, nombre o referencia familiar sin saturar la pantalla de filtros.{% endblock %}
 {% block content %}
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
 <section class="page-hero compact">
   <div>
     <p class="eyebrow">Comunidad estudiantil</p>
@@ -144,11 +147,21 @@
             <div class="table-badge-group">
               <span class="table-pill subtle">Edad {{ student.age_current or "No registrada" }}</span>
               <span class="table-pill subtle">{{ student.student_enrollments|length }} matrícula(s)</span>
-              <span class="table-pill subtle">{{ student.student_tutor_links|length }} tutor(es)</span>
+              <span class="table-pill subtle">{{ student.visible_tutor_count or 0 }} tutor(es)</span>
             </div>
           </td>
           <td data-label="Acciones" class="actions">
-            <a href="/students/{{ student.nie }}" class="table-action-link">Ver ficha</a>
+            <div class="table-actions">
+              <a href="/students/{{ student.nie }}" class="table-action-link">Ver ficha</a>
+              {% if current_user.role_code in ["admin", "principal", "administrative"] %}
+              <a href="/students/{{ student.nie }}?mode=edit" class="table-action-link secondary">Editar</a>
+              <form action="/students/{{ student.nie }}/delete" method="post" class="inline-form" data-delete-form>
+                <input type="hidden" name="delete_confirmation" value="">
+                <input type="hidden" name="next" value="/students">
+                <button type="submit" class="table-action-link danger">Eliminar</button>
+              </form>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}

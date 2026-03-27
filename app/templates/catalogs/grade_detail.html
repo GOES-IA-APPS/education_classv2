@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Grado {{ grade_entry.display_name or grade_entry.grade_label }} | Sistema de Gestión Escolar{% endblock %}
+{% block heading %}Detalle del grado{% endblock %}
+{% block subheading %}Consulta la referencia académica del grado, su escuela, año visible y las secciones relacionadas disponibles en el sistema.{% endblock %}
+{% block content %}
+{% if flash_message %}
+<div hidden data-ui-flash data-ui-flash-type="{{ flash_type or 'info' }}" data-ui-flash-message="{{ flash_message }}"></div>
+{% endif %}
+
+<section class="page-hero compact">
+  <div>
+    <p class="eyebrow">Grado {{ "manual" if grade_entry.source_type == "manual" else "derivado" }}</p>
+    <h2>{{ grade_entry.display_name or grade_entry.grade_label }}</h2>
+    <p>
+      Referencia académica visible para la escuela {{ grade_entry.school_code or "general" }},
+      año {{ grade_entry.academic_year or "-" }} y grado {{ grade_entry.grade_label }}.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ return_to }}" class="button secondary">Volver</a>
+    {% if can_manage_grades %}
+    <a
+      href="{% if grade_entry.source_type == 'manual' %}/catalogs/grades/detail?source=manual&grade_id={{ grade_entry.id }}&mode=edit{% else %}/catalogs/grades/detail?source=derived&school_code={{ grade_entry.school_code or '' }}&academic_year={{ grade_entry.academic_year or '' }}&grade_label={{ grade_entry.grade_label }}&mode=edit{% endif %}"
+      class="button secondary"
+    >Editar</a>
+    {% if grade_entry.source_type == "manual" %}
+    <form action="/catalogs/grades/{{ grade_entry.id }}/delete" method="post" class="inline-form" data-delete-form>
+      <input type="hidden" name="delete_confirmation" value="">
+      <input type="hidden" name="next" value="/catalogs/grades/detail?source=manual&grade_id={{ grade_entry.id }}">
+      <button type="submit" class="button danger">Eliminar</button>
+    </form>
+    {% else %}
+    <form action="/catalogs/grades/delete-derived" method="post" class="inline-form" data-delete-form>
+      <input type="hidden" name="delete_confirmation" value="">
+      <input type="hidden" name="school_code" value="{{ grade_entry.school_code or '' }}">
+      <input type="hidden" name="academic_year" value="{{ grade_entry.academic_year or '' }}">
+      <input type="hidden" name="grade_label" value="{{ grade_entry.grade_label }}">
+      <input type="hidden" name="next" value="/catalogs/grades/detail?source=derived&school_code={{ grade_entry.school_code or '' }}&academic_year={{ grade_entry.academic_year or '' }}&grade_label={{ grade_entry.grade_label }}">
+      <button type="submit" class="button danger">Eliminar</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  </div>
+</section>
+
+{% if error %}
+<div class="alert error">{{ error }}</div>
+{% endif %}
+
+{% if edit_mode %}
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Editar grado</h2>
+      <p class="muted">Actualiza la referencia manual cuando el grado proviene del catálogo complementario.</p>
+    </div>
+  </div>
+  {% if grade_entry.source_type == "manual" %}
+  <form action="/catalogs/grades/{{ grade_entry.id }}/edit" method="post" class="form-panel">
+    <div class="form-section">
+      <div class="form-section-heading">
+        <strong>Datos del grado</strong>
+        <p>Modifica solo los datos necesarios para mantener el catálogo visible y consistente.</p>
+      </div>
+      <div class="form-grid">
+        <label><span>Escuela</span><input type="text" name="school_code" value="{{ grade_entry.school_code or '' }}"></label>
+        <label><span>Año académico</span><input type="number" name="academic_year" value="{{ grade_entry.academic_year or '' }}"></label>
+        <label><span>Grado</span><input type="text" name="grade_label" value="{{ grade_entry.grade_label }}" required></label>
+        <label><span>Nombre de despliegue</span><input type="text" name="display_name" value="{{ grade_entry.display_name or '' }}"></label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button">Guardar cambios</button>
+      <a href="/catalogs/grades/detail?source=manual&grade_id={{ grade_entry.id }}" class="button secondary">Cancelar edición</a>
+    </div>
+  </form>
+  {% else %}
+  <div class="alert warning">Este grado se deriva de matrículas y asignaciones reales. No se puede editar directamente desde esta pantalla.</div>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="grid two">
+  <article class="card">
+    <h2>Resumen</h2>
+    <div class="detail-grid">
+      <div><strong>Grado</strong><span>{{ grade_entry.grade_label }}</span></div>
+      <div><strong>Nombre visible</strong><span>{{ grade_entry.display_name or "-" }}</span></div>
+      <div><strong>Escuela</strong><span>{{ grade_entry.school_code or "General" }}</span></div>
+      <div><strong>Año académico</strong><span>{{ grade_entry.academic_year or "-" }}</span></div>
+      <div><strong>Origen</strong><span>{{ "Manual" if grade_entry.source_type == "manual" else "Derivado desde datos reales" }}</span></div>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>Alcance visible</h2>
+    <div class="detail-grid">
+      <div><strong>Secciones relacionadas</strong><span>{{ related_sections|length }}</span></div>
+      <div><strong>Edición directa</strong><span>{{ "Disponible" if grade_entry.source_type == "manual" else "No disponible" }}</span></div>
+      <div><strong>Eliminación directa</strong><span>{{ "Disponible" if grade_entry.source_type == "manual" else "No disponible" }}</span></div>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Secciones relacionadas</h2>
+      <p class="muted">Se listan las secciones visibles asociadas a este grado en el entorno actual.</p>
+    </div>
+  </div>
+  {% if related_sections %}
+  <div class="table-shell">
+    <table class="table responsive-table">
+      <thead>
+        <tr>
+          <th>Sección</th>
+          <th>Nombre visible</th>
+          <th>Turno</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for section in related_sections %}
+        <tr>
+          <td data-label="Sección">{{ section.section_code or "-" }}</td>
+          <td data-label="Nombre visible">{{ section.section_name or "-" }}</td>
+          <td data-label="Turno">{{ section.shift or "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No hay secciones visibles</h3>
+    <p>No se encontraron secciones asociadas a este grado con la visibilidad actual.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

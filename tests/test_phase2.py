@@ -1,6 +1,7 @@
 from sqlalchemy import select
 
 from app.models import (
+    GradeCatalog,
     Role,
     School,
     Student,
@@ -332,6 +333,157 @@ def test_teacher_scope_only_sees_own_assignment_and_students(client, db_session)
     assert students_page.status_code == 200
     assert "NIE-002" in students_page.text
     assert "NIE-001" not in students_page.text
+
+
+def test_student_detail_update_and_delete_actions_work(client, db_session):
+    seed_academic_fixture(db_session)
+    login(client, "admin@example.org", "Admin!234")
+
+    detail_page = client.get("/students/NIE-001")
+    assert detail_page.status_code == 200
+    assert "Ana Garcia" in detail_page.text
+    assert "Editar" in detail_page.text
+    assert "Eliminar" in detail_page.text
+
+    edit_page = client.get("/students/NIE-001?mode=edit")
+    assert edit_page.status_code == 200
+    assert "Guardar cambios" in edit_page.text
+
+    update_response = client.post(
+        "/students/NIE-001",
+        data={
+            "gender": "F",
+            "first_name1": "Ana Maria",
+            "first_name2": "",
+            "first_name3": "",
+            "last_name1": "Garcia",
+            "last_name2": "",
+            "last_name3": "",
+            "birth_date": "",
+            "age_current": "12",
+            "father_full_name": "Padre Uno",
+            "mother_full_name": "Madre Actualizada",
+            "address_full": "Colonia Escolar",
+        },
+        follow_redirects=False,
+    )
+    assert update_response.status_code == 303
+    assert "/students/NIE-001" in update_response.headers["location"]
+
+    updated_student = db_session.scalar(select(Student).where(Student.nie == "NIE-001"))
+    assert updated_student is not None
+    assert updated_student.first_name1 == "Ana Maria"
+    assert updated_student.mother_full_name == "Madre Actualizada"
+
+    blocked_delete = client.post(
+        "/students/NIE-001/delete",
+        data={"delete_confirmation": "DELETE", "next": "/students/NIE-001"},
+        follow_redirects=False,
+    )
+    assert blocked_delete.status_code == 303
+    assert "/students/NIE-001?" in blocked_delete.headers["location"]
+    assert "No+se+puede+eliminar+el+alumno" in blocked_delete.headers["location"]
+
+    deletable_student = Student(
+        id=3,
+        nie="NIE-003",
+        first_name1="Claudia",
+        last_name1="Ramos",
+        gender="F",
+        age_current=13,
+    )
+    db_session.add(deletable_student)
+    db_session.commit()
+
+    list_page = client.get("/students")
+    assert list_page.status_code == 200
+    assert "/students/NIE-003?mode=edit" in list_page.text
+    assert "/students/NIE-003/delete" in list_page.text
+
+    delete_response = client.post(
+        "/students/NIE-003/delete",
+        data={"delete_confirmation": "DELETE", "next": "/students"},
+        follow_redirects=False,
+    )
+    assert delete_response.status_code == 303
+    assert "/students?" in delete_response.headers["location"]
+    assert "Eliminado+con+%C3%A9xito." in delete_response.headers["location"]
+    assert db_session.scalar(select(Student).where(Student.nie == "NIE-003")) is None
+
+
+def test_grade_catalog_detail_update_and_delete_actions_work(client, db_session):
+    seed_academic_fixture(db_session)
+    login(client, "admin@example.org", "Admin!234")
+
+    create_response = client.post(
+        "/catalogs/grades",
+        data={
+            "school_code": "SCH-A",
+            "academic_year": "2026",
+            "grade_label": "7",
+            "display_name": "Septimo Grado",
+        },
+        follow_redirects=False,
+    )
+    assert create_response.status_code == 303
+
+    manual_grade = db_session.scalar(select(GradeCatalog).where(GradeCatalog.grade_label == "7"))
+    assert manual_grade is not None
+
+    list_response = client.get("/catalogs/grades")
+    assert list_response.status_code == 200
+    assert "Septimo Grado" in list_response.text
+    assert f"/catalogs/grades/detail?source=manual&grade_id={manual_grade.id}" in list_response.text
+    assert f"/catalogs/grades/detail?source=manual&grade_id={manual_grade.id}&mode=edit" in list_response.text
+    assert f"/catalogs/grades/{manual_grade.id}/delete" in list_response.text
+
+    detail_response = client.get(f"/catalogs/grades/detail?source=manual&grade_id={manual_grade.id}")
+    assert detail_response.status_code == 200
+    assert "Septimo Grado" in detail_response.text
+
+    update_response = client.post(
+        f"/catalogs/grades/{manual_grade.id}/edit",
+        data={
+            "school_code": "SCH-A",
+            "academic_year": "2026",
+            "grade_label": "7",
+            "display_name": "Septimo Grado Actualizado",
+        },
+        follow_redirects=False,
+    )
+    assert update_response.status_code == 303
+    assert f"grade_id={manual_grade.id}" in update_response.headers["location"]
+
+    db_session.refresh(manual_grade)
+    assert manual_grade.display_name == "Septimo Grado Actualizado"
+
+    derived_detail = client.get("/catalogs/grades/detail?source=derived&school_code=SCH-A&academic_year=2026&grade_label=6")
+    assert derived_detail.status_code == 200
+    assert "Derivado desde datos reales" in derived_detail.text
+
+    blocked_delete = client.post(
+        "/catalogs/grades/delete-derived",
+        data={
+            "school_code": "SCH-A",
+            "academic_year": "2026",
+            "grade_label": "6",
+            "delete_confirmation": "DELETE",
+            "next": "/catalogs/grades/detail?source=derived&school_code=SCH-A&academic_year=2026&grade_label=6",
+        },
+        follow_redirects=False,
+    )
+    assert blocked_delete.status_code == 303
+    assert "No+se+puede+eliminar+un+grado+derivado" in blocked_delete.headers["location"]
+
+    delete_response = client.post(
+        f"/catalogs/grades/{manual_grade.id}/delete",
+        data={"delete_confirmation": "DELETE", "next": "/catalogs/grades"},
+        follow_redirects=False,
+    )
+    assert delete_response.status_code == 303
+    assert "/catalogs/grades?" in delete_response.headers["location"]
+    assert "Eliminado+con+%C3%A9xito." in delete_response.headers["location"]
+    assert db_session.scalar(select(GradeCatalog).where(GradeCatalog.id == manual_grade.id)) is None
 
 
 def test_principal_scope_can_be_derived_from_director_assignment(client, db_session):
